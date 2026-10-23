@@ -11,7 +11,7 @@
   var IDS = {
     banner:       'ca-app-pub-4441564159986722/7273777284', // Google test IDs
     interstitial: 'ca-app-pub-4441564159986722/1100707444',
-    rewarded:     'ca-app-pub-4441564159986722/2585179509'
+    rewarded:     'ca-app-pub-4441564159986722/9909135757'
   };
   // =======================================================================
 
@@ -23,6 +23,15 @@
     '.modal{align-items:center !important;padding:16px 12px calc(var(--ad,0px) + 16px) !important}' +
     '.sheet{border-radius:22px !important;max-height:calc(100vh - var(--ad,0px) - 48px) !important}';
   document.head.appendChild(st);
+  function toast(msg) {
+    var d = document.createElement('div');
+    d.textContent = msg;
+    d.style.cssText = 'position:fixed;left:12px;right:12px;bottom:calc(var(--ad,0px) + 20px);z-index:99;background:#222;color:#fff;padding:12px 14px;border-radius:12px;font:14px system-ui,sans-serif;text-align:center';
+    document.body.appendChild(d);
+    setTimeout(function () { d.remove(); }, 8000);
+  }
+  var initErr = '';
+  function why(e) { return String((e && (e.message || e.errorMessage || e.code)) || e || 'unknown'); }
   function setAd(h) { document.documentElement.style.setProperty('--ad', Math.ceil(h) + 'px'); }
 
   AdMob.addListener('bannerAdSizeChanged', function (s) { if (s && s.height) { gotSize = true; setAd(Math.max(s.height + 16, 64)); } });
@@ -50,7 +59,7 @@
       });
       if (!gotSize) setAd(90); // fallback until the real banner size arrives
       preloadInterstitial();
-    } catch (e) { console.warn('AdMob init failed', e); }
+    } catch (e) { initErr = why(e); console.warn('AdMob init failed', e); }
   }
 
   function preloadInterstitial() {
@@ -61,21 +70,25 @@
     native: true,
 
     showRewarded: function (cb) {
-      if (!ready) { cb(false); return; }
-      var earned = false, handles = [], finished = false;
+      if (!ready) { toast('Ads are not ready yet. ' + (initErr ? 'Error: ' + initErr : 'Try again in a few seconds.')); cb(false); return; }
+      var earned = false, handles = [], finished = false, reason = '';
       function finish() {
         if (finished) return;
         finished = true;
-        handles.forEach(function (h) { h.remove(); });
+        handles.forEach(function (h) { try { h.remove(); } catch (e) {} });
+        if (!earned) toast('The ad could not be shown. ' + (reason ? 'Reason: ' + reason : 'Try again in a moment.'));
         cb(earned);
+        preloadInterstitial();
       }
+      function got() { earned = true; setTimeout(finish, 300); }
       function on(name, fn) { AdMob.addListener(name, fn).then(function (h) { handles.push(h); }); }
-      on('onRewardedVideoAdReward', function () { earned = true; });
-      on('onRewardedVideoAdDismissed', finish);
-      on('onRewardedVideoAdFailedToLoad', finish);
+      on('onRewardedVideoAdReward', got);
+      on('onRewardedVideoAdDismissed', function () { setTimeout(finish, 300); });
+      on('onRewardedVideoAdFailedToLoad', function (e) { reason = why(e); finish(); });
       AdMob.prepareRewardVideoAd({ adId: IDS.rewarded, isTesting: TESTING })
         .then(function () { return AdMob.showRewardVideoAd(); })
-        .catch(finish);
+        .then(function (r) { if (r) got(); })
+        .catch(function (e) { reason = why(e); finish(); });
     },
 
     showInterstitial: function () {
