@@ -15,9 +15,20 @@
   };
   // =======================================================================
 
-  var ready = false;
+  var ready = false, started = false, gotSize = false;
+
+  // Leave a blank strip at the bottom of the game for the banner ad.
+  var st = document.createElement('style');
+  st.textContent = '#app{padding-bottom:var(--ad,0px) !important}.modal{padding-bottom:var(--ad,0px) !important}';
+  document.head.appendChild(st);
+  function setAd(h) { document.documentElement.style.setProperty('--ad', Math.ceil(h) + 'px'); }
+
+  AdMob.addListener('bannerAdSizeChanged', function (s) { if (s && s.height) { gotSize = true; setAd(s.height + 8); } });
+  AdMob.addListener('bannerAdFailedToLoad', function () { setAd(0); });
 
   async function init() {
+    if (started) return;
+    started = true;
     try {
       // Consent form (required for users in the EEA / UK)
       var info = await AdMob.requestConsentInfo();
@@ -28,7 +39,6 @@
     try {
       await AdMob.initialize({ initializeForTesting: TESTING });
       ready = true;
-      document.body.style.paddingBottom = '60px'; // room for the banner
       await AdMob.showBanner({
         adId: IDS.banner,
         adSize: 'ADAPTIVE_BANNER',
@@ -36,6 +46,7 @@
         margin: 0,
         isTesting: TESTING
       });
+      if (!gotSize) setAd(70); // fallback until the real banner size arrives
       preloadInterstitial();
     } catch (e) { console.warn('AdMob init failed', e); }
   }
