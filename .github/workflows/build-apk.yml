@@ -21,7 +21,7 @@ jobs:
       - run: npx cap add android
       - name: Add the AdMob app ID (Google test ID until you replace it)
         run: |
-          sed -i 's#</application>#    <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"/>\n    </application>#' android/app/src/main/AndroidManifest.xml
+          sed -i 's#</application>#    <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-4441564159986722~6530621382"/>\n    </application>#' android/app/src/main/AndroidManifest.xml
       - run: npx cap sync android
       - name: Build debug APK (for testing on your phone)
         run: cd android && chmod +x gradlew && ./gradlew assembleDebug
