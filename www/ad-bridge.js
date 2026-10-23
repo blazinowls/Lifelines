@@ -7,7 +7,7 @@
   if (!AdMob) return;
 
   // ===== SET TO false AND PASTE YOUR REAL AD UNIT IDS BEFORE RELEASE =====
-  var TESTING = true;
+  var TESTING = false;
   var IDS = {
     banner:       'ca-app-pub-4441564159986722/7273777284', // Google test IDs
     interstitial: 'ca-app-pub-4441564159986722/1100707444',
