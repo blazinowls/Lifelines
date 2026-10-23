@@ -9,9 +9,9 @@
   // ===== SET TO false AND PASTE YOUR REAL AD UNIT IDS BEFORE RELEASE =====
   var TESTING = true;
   var IDS = {
-    banner:       'ca-app-pub-3940256099942544/9214589741', // Google test IDs
-    interstitial: 'ca-app-pub-3940256099942544/1033173712',
-    rewarded:     'ca-app-pub-3940256099942544/5224354917'
+    banner:       'ca-app-pub-4441564159986722/7273777284', // Google test IDs
+    interstitial: 'ca-app-pub-4441564159986722/1100707444',
+    rewarded:     'ca-app-pub-4441564159986722/2585179509'
   };
   // =======================================================================
 
