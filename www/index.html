@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lifelines</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f0e4;--surface:#fffaf0;--ink:#2b2a26;--mute:#7b7566;--line:#e4dac3;--accent:#1f6f6b;--accent-ink:#fff;--warn:#b5472c;
+--c-health:#c4513b;--c-happy:#d99a1c;--c-smarts:#3d7ab5;--c-looks:#9a5db0;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1a17;--surface:#262420;--ink:#f1ebdc;--mute:#a49d8b;--line:#3a362e;--accent:#4fb5ae;--accent-ink:#10211f;--warn:#e47a5f}}
+:root[data-theme="dark"]{--bg:#1b1a17;--surface:#262420;--ink:#f1ebdc;--mute:#a49d8b;--line:#3a362e;--accent:#4fb5ae;--accent-ink:#10211f;--warn:#e47a5f}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;justify-content:center;user-select:none;-webkit-user-select:none}
+#app{width:100%;max-width:480px;height:100%;display:flex;flex-direction:column}
+header{padding:14px 16px 10px;border-bottom:1px solid var(--line)}
+.row{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px}
+h1{font-family:Fraunces,Georgia,serif;font-size:24px;margin:0}
+.sub{color:var(--mute);font-size:14px}
+.money{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-top:12px}
+.st{font-size:12px;color:var(--mute)}
+.bar{height:8px;border-radius:5px;background:var(--line);margin-top:3px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:5px;transition:width .3s}
+#log{flex:1;overflow-y:auto;padding:12px 16px}
+.yr{font-family:Fraunces,Georgia,serif;font-weight:700;font-size:13px;color:var(--accent);margin:14px 0 4px;letter-spacing:.04em}
+.ln{margin:0 0 5px;line-height:1.4;font-size:15px}
+footer{display:flex;gap:8px;padding:10px 16px 14px;border-top:1px solid var(--line);background:var(--bg)}
+.btn{font:inherit;font-weight:700;font-size:16px;border:0;border-radius:14px;padding:14px;cursor:pointer;background:var(--accent);color:var(--accent-ink)}
+.btn.alt{background:var(--surface);color:var(--ink);border:1px solid var(--line);font-size:13px;padding:14px 9px}
+.btn:disabled{opacity:.45}
+#age{flex:1}
+.modal{position:fixed;inset:0;background:rgba(15,12,5,.55);display:none;align-items:flex-end;justify-content:center;z-index:10}
+.modal.on{display:flex}
+.sheet{background:var(--surface);width:100%;max-width:480px;max-height:85vh;overflow-y:auto;border-radius:22px 22px 0 0;padding:20px 18px calc(18px + env(safe-area-inset-bottom,0px))}
+.sheet h2{font-family:Fraunces,Georgia,serif;font-size:21px;margin:0 0 6px}
+.sheet p{margin:0 0 14px;line-height:1.45}
+.opt{display:block;width:100%;text-align:left;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:13px;margin-top:8px;cursor:pointer}
+.opt small{display:block;color:var(--mute);font-size:13px;margin-top:2px}
+.opt:disabled{opacity:.45}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+.chip{font-size:13px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--bg)}
+.up{color:var(--accent)}.dn{color:var(--warn)}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="row"><h1 id="name"></h1><span class="money" id="money"></span></div>
+    <div class="row"><div class="sub" id="meta"></div><span><button class="btn alt" id="set" style="padding:5px 10px;font-size:12px;border-radius:10px;margin-right:6px">Settings</button><button class="btn alt" id="inv" style="padding:5px 10px;font-size:12px;border-radius:10px;margin-right:6px">Items</button><button class="btn alt" id="nw" style="padding:5px 10px;font-size:12px;border-radius:10px;margin-right:6px">News</button><button class="btn alt" id="nl" style="padding:5px 10px;font-size:12px;border-radius:10px">New life</button></span></div>
+    <div class="stats" id="stats"></div>
+  </header>
+  <div id="log"></div>
+  <footer>
+    <button class="btn alt" id="act">Activities</button>
+    <button class="btn alt" id="ppl">People</button>
+    <button class="btn alt" id="skl">Skills</button>
+    <button class="btn" id="age">Age up</button>
+  </footer>
+</div>
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+
+<script src="ad-bridge.js"></script>
+<script>
+var $=function(i){return document.getElementById(i)};
+var rnd=function(a,b){return a+Math.floor(Math.random()*(b-a+1))};
+var chance=function(p){return Math.random()<p};
+var clamp=function(n){return Math.max(0,Math.min(100,n))};
+var pick=function(a){return a[rnd(0,a.length-1)]};
+var shuf=function(a){return a.slice().sort(function(){return Math.random()-.5})};
+var TR=['Ambitious','Lucky','Shy','Athletic','Bookish','Charming'];
+function T(t){return!!(G&&G.traits&&G.traits.indexOf(t)>-1)}
+var FN=['Alex','Sam','Jordan','Riley','Casey','Morgan','Avery','Quinn','Taylor','Jamie','Noor','Kai','Mila','Leo','Zara','Omar','Ethan','Sofia','Maya','Lucas','Nina','Diego'];
+var LN=['Rivera','Chen','Okafor','Smith','Patel','Novak','Silva','Kim','Haddad','Larsen','Mensah','Ortiz'];
+var IVY=['Harvard','Yale','Princeton','Columbia','Penn','Brown','Dartmouth','Cornell'];
+var STATE=['State University','Tech University','Flagship State University'];
+var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var STATS=[['health','Health','--c-health'],['happy','Happiness','--c-happy'],['smarts','Smarts','--c-smarts'],['looks','Looks','--c-looks']];
+var LBL={health:'Health',happy:'Happy',smarts:'Smarts',looks:'Looks',money:'Money'};
+window.AdBridge=window.AdBridge||{showRewarded:function(cb){var t=3;$('sheet').innerHTML='<h2>Ad preview</h2><p>Your rewarded ad plays here.</p>';var b=document.createElement('button');b.className='btn';b.style.width='100%';b.disabled=true;b.textContent='Reward in 3';$('sheet').appendChild(b);$('modal').classList.add('on');var i=setInterval(function(){t--;if(t>0){b.textContent='Reward in '+t;return}clearInterval(i);b.disabled=false;b.textContent='Claim reward';b.onclick=function(){$('modal').classList.remove('on');cb(true)}},1000)},showInterstitial:function(){}};
+var G=null,best=0;
+try{best=+localStorage.getItem('ll_best')||0;var r=localStorage.getItem('ll2_save');if(r)G=JSON.parse(r)}catch(e){}
+
+function person(t,last,b){return{n:pick(FN)+' '+(last||pick(LN)),t:t,b:b==null?rnd(55,90):b,seen:false,dead:false}}
+function startLife(custom,adult){
+  var nm=custom||pick(FN)+' '+pick(LN),ln=nm.split(' ').pop();
+  G={name:nm,age:0,month:rnd(0,11),money:0,debt:0,health:rnd(60,95),happy:rnd(55,90),smarts:rnd(30,85),looks:rnd(30,85),
+     gpa:3,k12:false,grade:-1,college:null,cm:0,rej:{},degree:'',job:null,salary:0,retired:false,acted:false,ap:3,alive:true,
+     people:[person('Mother',ln),person('Father',ln)].concat(chance(.6)?[person('Sibling',ln)]:[]).concat(chance(.2)?[person('Sibling',ln)]:[]),log:[],traits:shuf(TR).slice(0,rnd(1,2)),pnw:Math.round(Math.pow(10,3.5+Math.random()*3)/1000)*1000,track:null,lvl:0,ed:'none',house:0,homeVal:0,mort:0,car:0,revived:0};
+  say('You were born. Welcome to the world, '+nm.split(' ')[0]+'.');say('Your traits: '+G.traits.join(', ').toLowerCase()+'.');var lg=applyLegacy();if(lg)say(lg);
+  if(adult){G.age=18;G.month=5;G.gpa=rnd(22,38)/10;G.money=rnd(1500,5000);G.grade=12;G.log=[];G.people.forEach(function(p){p.b=rnd(50,90)});G.people.push(person('Friend',null,60));say('You are 18 and just finished high school. Your traits: '+G.traits.join(', ').toLowerCase()+'.');render();save();return hsGrad(function(){render();save()})}
+  save();render();
+}
+function newLife(){
+  try{if(!tutSeen&&!localStorage.getItem('ll_tut'))return tutorial(newLife)}catch(e){}
+  $('sheet').innerHTML='<h2>New life</h2><p>Choose a name, or leave it blank for a random one.</p><input id="nm" maxlength="24" placeholder="Random name" style="width:100%;font:inherit;font-size:17px;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);user-select:text;-webkit-user-select:text"><button class="btn" id="go" style="width:100%;margin-top:12px">Start at birth</button><button class="btn alt" id="go18" style="width:100%;margin-top:8px">Start at 18</button>';
+  $('modal').classList.add('on');
+  $('go18').onclick=function(){var v=$('nm').value.trim().replace(/[<>&"]/g,'');$('modal').classList.remove('on');startLife(v,true)};
+  $('go').onclick=function(){var v=$('nm').value.trim().replace(/[<>&"]/g,'');$('modal').classList.remove('on');startLife(v)};
+}
+function save(){try{localStorage.setItem('ll2_save',JSON.stringify(G))}catch(e){}}
+function say(t){G.log.unshift({a:G.age,m:G.month,t:t})}
+function fmt(n){return(n<0?'-':'')+'$'+Math.abs(Math.round(n)).toLocaleString('en-US')}
+function ord(n){return n+(n===1?'st':n===2?'nd':n===3?'rd':'th')}
+function busy(){return $('modal').classList.contains('on')}
+
+function spend(n){
+  if(G.age<18){G.money=Math.max(0,G.money-n);return}
+  if(G.money>=n){G.money-=n;return}
+  var s=n-G.money;G.money=0;
+  var use=Math.min(s,Math.max(0,(G.cl||0)-(G.debt||0)));G.debt=(G.debt||0)+use;s-=use;
+  if(s>0){var fee=Math.round(s*.05);G.debt+=s+fee;G.cl=0;G.happy=clamp(G.happy-3);say('You could not cover '+fmt(s)+' in bills. The bank added '+fmt(fee)+' in overdraft fees and froze your credit line.')}
+}
+function apply(fx){var o=[];for(var k in fx){var v=fx[k];if(!v)continue;if(k==='money'){if(v>0)G.money+=v;else spend(-v)}else G[k]=clamp(G[k]+v);o.push({k:k,v:v})}return o}
+function chips(a){return'<div class="chips">'+a.map(function(c){return'<span class="chip '+(c.v>0?'up':'dn')+'">'+LBL[c.k]+' '+(c.k==='money'?(c.v>0?'+':'')+fmt(c.v):(c.v>0?'+':'')+c.v)+'</span>'}).join('')+'</div>'}
+
+/* ---------- modal helpers ---------- */
+function ask(title,body,opts){
+  $('sheet').innerHTML='<h2>'+title+'</h2><p>'+body+'</p>';
+  opts.forEach(function(o){
+    var b=document.createElement('button');b.className='opt';
+    b.innerHTML=o.l+(o.s?'<small>'+o.s+'</small>':'');
+    if(o.dis)b.disabled=true;
+    b.onclick=o.go;$('sheet').appendChild(b);
+  });
+  $('modal').classList.add('on');
+}
+function result(text,fx,done){
+  var c=apply(fx||{});say(text);
+  $('sheet').innerHTML='<h2>'+text+'</h2>'+chips(c);
+  var b=document.createElement('button');b.className='btn';b.style.width='100%';b.textContent='Continue';
+  b.onclick=function(){$('modal').classList.remove('on');if(done)done()};
+  $('sheet').appendChild(b);render();save();
+}
+
+/* ---------- events ---------- */
+var EV=[
+ {a:[3,12],t:'A kid on the playground grabs your toy.',o:[{l:'Stand up for yourself',fx:{happy:5,health:-3},r:'You got it back, with a scraped knee.'},{l:'Walk away',fx:{happy:-2,smarts:1},r:'You let it go and found a new game.'}]},
+ {a:[6,17],t:'You have a big test tomorrow.',school:1,o:[{l:'Study all night',fx:{smarts:4,happy:-2},r:'You aced it.'},{l:'Play video games',fx:{happy:4,smarts:-2},r:'Fun night. The test went worse.'}]},
+ {a:[10,17],t:'Someone at school teases you about your looks.',o:[{l:'Ignore them',fx:{happy:-3},r:'It stung, but it passed.'},{l:'Tell a teacher',fx:{happy:2,smarts:1},r:'The teacher stepped in.'}]},
+ {a:[13,24],t:'You are invited to a party.',o:[{l:'Go',fx:{happy:5,health:-2,looks:1},r:'Great night. Sore feet.'},{l:'Stay in',fx:{smarts:2},r:'You read and relaxed.'}]},
+ {a:[14,70],t:'You find $50 on the street.',o:[{l:'Keep it',fx:{money:50,happy:2},r:'Lucky day.'},{l:'Hand it in',fx:{happy:4},r:'The owner was thrilled.'}]},
+ {a:[14,40],t:'Someone you like asks you out.',nopartner:1,o:[{l:'Say yes',fx:{happy:8},r:'You had a wonderful time.',partner:1},{l:'Politely decline',fx:{smarts:1},r:'You kept things simple.'}]},
+ {a:[18,60],t:'Friends invite you on a trip for $800.',o:[{l:'Go',fx:{money:-800,happy:8},r:'Unforgettable memories.'},{l:'Skip it',fx:{happy:-2},r:'You saved money but felt left out.'}]},
+ {a:[8,80],t:'You come down with a nasty illness.',o:[{l:'See a doctor ($200)',fx:{money:-200,health:8},r:'The doctor fixed you right up.'},{l:'Tough it out',fx:{health:-8},r:'It took weeks to recover.'}]},
+ {a:[22,64],t:'Your boss offers you overtime.',job:1,o:[{l:'Accept',fx:{money:1500,happy:-4,health:-3},r:'Nice pay. You are tired.'},{l:'Decline',fx:{happy:2},r:'You enjoyed your evenings.'}]},
+ {a:[25,70],t:'A lottery ticket costs $5.',o:[{l:'Buy one',fx:{money:-5},g:{p:.03,fx:{money:50000,happy:15},r:'YOU WON $50,000!'},r:'Not a winner.'},{l:'Save your money',fx:{},r:'You walked on by.'}]},
+ {a:[50,90],t:'A check-up finds something worrying.',o:[{l:'Get treatment ($500)',fx:{money:-500,health:6},r:'Caught early. Good call.'},{l:'Ignore it',fx:{health:-10},r:'It got worse.'}]}
+];
+function E(a,b,t){var o=[].slice.call(arguments,3).map(function(x){return{l:x[0],fx:x[1],r:x[2]}});return{a:[a,b],t:t,o:o}}
+EV.push(
+// ages 0-10
+E(0,2,'You are teething and cranky.',['Cry it out',{happy:-2,health:1},'You eventually calmed down.'],['Chew on a toy',{happy:2},'The toy helped.']),
+E(1,2,'You are taking your first steps.',['Keep walking',{health:3,happy:4},'Everyone cheered.'],['Crawl instead',{happy:1},'Crawling was faster anyway.']),
+E(1,5,'Dinner time: vegetables again.',['Eat them',{health:3,happy:-2},'Not so bad.'],['Refuse',{happy:2,health:-2},'You won this round.']),
+E(2,6,'You have an imaginary friend.',['Play along',{happy:4,smarts:1},'Tea party with an invisible guest.'],['Ignore them',{smarts:1},'They faded away.']),
+E(2,5,'You throw a tantrum in the grocery store.',['Scream louder',{happy:2,looks:-1},'You got a lollipop and a lecture.'],['Calm down',{happy:-1,smarts:1},'You learned to use your words.']),
+E(4,8,'You are learning to ride a bike.',['Practice until you get it',{health:3,happy:5},'You rode on your own!'],['Give up',{happy:-3},'Maybe next summer.']),
+E(5,8,'You lose a tooth.',['Put it under your pillow',{happy:4,money:5},'The tooth fairy left $5.'],['Show it off',{happy:2},'Everyone was impressed.']),
+E(3,9,'Your family takes you to the zoo.',['Pet the animals',{happy:5,health:-1},'Great day. You caught a sniffle.'],['Read every sign',{smarts:3},'You learned a lot about giraffes.']),
+E(4,10,'Swimming lessons start.',['Take lessons',{health:4,happy:2},'You can swim now.'],['Stay out of the pool',{happy:-1},'You stayed dry.']),
+E(5,10,'It is show-and-tell day.',['Bring a bug',{happy:2},'Everyone laughed. You loved it.'],['Bring a drawing',{smarts:2},'The teacher praised it.']),
+E(4,9,'You get lost at the mall.',['Ask a staff member',{smarts:2,happy:-1},'They found your parents fast.'],['Wander around',{happy:-4},'Scary. Your parents found you crying.']),
+E(7,10,'A classmate invites you to a sleepover.',['Go',{happy:5,health:-1},'You stayed up way too late.'],['Stay home',{happy:-1,smarts:1},'Quiet night in.']),
+E(3,10,'You feel sick after eating too much candy.',['Tell your parents',{health:1,happy:-1},'They made you drink water.'],['Hide it',{health:-3},'It got worse before it got better.']),
+E(6,10,'Your school has a reading challenge.',['Join',{smarts:4,happy:1},'You read twelve books.'],['Skip it',{happy:2},'Recess was more fun.']),
+E(4,10,'Your family offers you a pet.',['Get a dog',{happy:6,health:2},'Best friend ever.'],['Get a goldfish',{happy:3},'It lived a surprisingly long time.']),
+E(2,8,'You have a nightmare.',['Wake your parents',{happy:2},'They tucked you back in.'],['Tough it out',{happy:-2},'You barely slept.']),
+E(7,10,'Your class holds a spelling bee.',['Compete',{smarts:3,happy:3},'You placed third.'],['Pass',{happy:-1},'You watched from your seat.']),
+E(8,10,'Your parents offer an allowance for chores.',['Do the chores',{money:20,happy:-1},'You earned $20.'],['Skip them',{happy:2},'You played all weekend.']),
+E(6,10,'A school friend is moving away.',['Write letters',{happy:1,smarts:1},'You stayed in touch for a while.'],['Move on',{happy:-3},'You missed them more than you expected.']),
+E(5,10,'Your family goes on a long road trip.',['Count license plates',{smarts:2,happy:2},'You counted 31 states.'],['Play on a tablet',{happy:3,smarts:-1},'Quiet backseat, glassy eyes.']),
+// ages 11-18
+E(11,14,'You get braces.',['Take good care of them',{looks:3,happy:-1},'A great smile, eventually.'],['Skip the cleaning',{looks:-2,health:-2},'The orthodontist was not happy.']),
+E(12,16,'You break out with acne.',['Start a skincare routine',{looks:3,happy:1},'Your skin improved.'],['Pick at it',{looks:-3,happy:-2},'That made it worse.']),
+E(11,15,'You get your first phone.',['Use it wisely',{smarts:1,happy:3},'Handy and fun.'],['Scroll all night',{happy:3,smarts:-3,health:-2},'You were a zombie at school.']),
+E(11,17,'Tryouts for a school sports team are coming up.',['Try out',{health:4,happy:3},'You made the team.'],['Skip it',{happy:-1},'You wondered what might have been.']),
+E(11,17,'The school science fair is coming up.',['Enter a project',{smarts:5,happy:2},'You won an honorable mention.'],['Skip it',{happy:1},'You saved the effort.']),
+E(12,18,'A hard test is coming and a friend offers you their answers.',['Copy the answers',{smarts:-2,happy:-3},'You felt guilty all week.'],['Study honestly',{smarts:3},'You earned your grade.']),
+E(13,17,'A friend wants you to skip class.',['Skip',{happy:4,smarts:-3},'Fun day, missed lesson.'],['Go to class',{smarts:2},'You stayed on track.']),
+E(18,30,'Someone at a party offers you a vape.',['Say no',{happy:-1,health:1},'You held your ground.'],['Try it',{health:-4,happy:2},'You coughed for an hour.']),
+E(15,18,'A local shop offers you a part-time job.',['Take it',{money:400,happy:-2},'You earned $400.'],['Decline',{happy:2},'You kept your free time.']),
+E(16,18,'It is time to get your driver license.',['Take the exam now',{happy:6,smarts:1},'You passed!'],['Wait a few months',{happy:-1},'You kept getting rides.']),
+E(16,18,'Prom night is coming.',['Go',{happy:6,money:-100,looks:1},'A night to remember.'],['Skip it',{happy:-2},'You stayed in with a movie.']),
+E(11,18,'The school band is looking for new members.',['Join',{smarts:2,happy:4},'You made new friends.'],['Pass',{happy:0},'Not your thing.']),
+E(16,18,'SAT season has arrived.',['Take a prep course ($300)',{money:-300,smarts:4},'Your practice scores climbed.'],['Wing it',{happy:2},'You saved money and stress.']),
+E(12,18,'There is drama about you on social media.',['Delete your post',{happy:-1,smarts:1},'It blew over.'],['Clap back',{happy:-4},'It got messy.']),
+E(12,17,'A friend spread a rumor about you.',['Confront them',{happy:-3,smarts:1},'You cleared the air.'],['Ignore it',{happy:-1},'People forgot about it.']),
+E(14,18,'A summer volunteer program has openings.',['Volunteer',{smarts:2,happy:3},'It looks great on applications.'],['Sleep in',{health:1,happy:2},'Best summer nap ever.']),
+E(11,17,'You get detention for being late.',['Apologize',{happy:-1,smarts:1},'The teacher went easy on you.'],['Argue',{happy:-3},'It earned you a second detention.']),
+E(16,18,'You dent your parents car.',['Admit it',{happy:-3,smarts:1},'They were upset but proud you told them.'],['Hide it',{happy:-1},'You got away with it, for now.']),
+E(13,18,'You want to get in better shape.',['Join a gym with a friend',{health:4,looks:2},'You kept each other going.'],['Eat fast food instead',{happy:3,health:-3,looks:-1},'Tasty, but you felt sluggish.']),
+E(13,18,'Your big crush rejects you.',['Move on',{happy:-3,smarts:1},'It hurt, then it faded.'],['Sulk for weeks',{happy:-7},'You barely left your room.'])
+);
+function kids(){return G.people.filter(function(p){return!p.dead&&p.t==='Child'})}
+function firstKid(f){return kids().filter(f)[0]}
+function spouseOk(){return G.people.some(function(p){return!p.dead&&(p.t==='Spouse'||(p.t==='Partner'&&p.b>=60))})}
+EV.push(
+{a:[20,45],t:'You and your partner are expecting a baby.',p:.15,cond:function(){return spouseOk()&&kids().length<4},o:[{l:'Welcome the baby',fx:{happy:10,money:-2000},r:'A healthy baby was born.',fn:function(){var c=person('Child',G.name.split(' ').pop(),75);c.age=0;G.people.push(c);return' You named your child '+c.n.split(' ')[0]+'.'}}]},
+{a:[1,95],t:'Your child is sick.',p:.2,cond:function(){return!!firstKid(function(k){return k.age<12})},o:[{l:'Take them to the doctor ($200)',fx:{money:-200,happy:2},r:'They recovered quickly.',fn:function(){var k=firstKid(function(k){return k.age<12});k.b=Math.min(100,k.b+5);return''}},{l:'Wait it out',fx:{happy:-2},r:'They felt better eventually, but remembered.',fn:function(){var k=firstKid(function(k){return k.age<12});k.b=Math.max(0,k.b-8);return''}}]},
+{a:[38,75],t:'Your child is about to start college.',p:.4,cond:function(){return!!firstKid(function(k){return k.age>=18&&!k.paid})},o:[{l:'Pay $20,000 for tuition',fx:{money:-20000,happy:3},r:'Your child is deeply grateful.',fn:function(){var k=firstKid(function(k){return k.age>=18&&!k.paid});k.paid=1;k.b=Math.min(100,k.b+15);return''}},{l:'Let them take loans',fx:{happy:-1},r:'They will manage on their own.',fn:function(){var k=firstKid(function(k){return k.age>=18&&!k.paid});k.paid=1;k.b=Math.max(0,k.b-10);return''}}]},
+{a:[45,95],t:'Your child has a baby.',p:.3,cond:function(){return!!firstKid(function(k){return k.age>=28&&!k.gk})},o:[{l:'Meet your grandchild',fx:{happy:10},r:'You are a grandparent now!',fn:function(){firstKid(function(k){return k.age>=28&&!k.gk}).gk=1;return''}}]}
+);
+function hasPartner(){return G.people.some(function(p){return!p.dead&&(p.t==='Partner'||p.t==='Spouse')})}
+function randEvent(done){
+  var ok=EV.filter(function(e){return G.age>=e.a[0]&&G.age<=e.a[1]&&(!e.job||G.job)&&(!e.nopartner||!hasPartner())&&(!e.school||G.k12||G.college)&&(!e.cond||e.cond())&&(!e.p||chance(e.p))});
+  if(!ok.length)return false;var ev=pick(ok);
+  ask('Life event',ev.t,ev.o.map(function(o){return{l:o.l,go:function(){
+    var fx=o.fx,txt=o.r;
+    if(o.g&&chance(o.g.p*(T('Lucky')?2.5:1))){fx=Object.assign({},fx);for(var k in o.g.fx)fx[k]=(fx[k]||0)+o.g.fx[k];txt=o.g.r}
+    if(o.partner){var p=person('Partner',null,50);G.people.push(p);txt+=' You started dating '+p.n+'.'}
+    if(o.fn)txt+=o.fn();
+    result(txt,fx,done);
+  }}}));
+  return true;
+}
+
+/* ---------- 2,000 adult events: 10 domains x 2 signs x 20 causes x 5 intensities ---------- */
+var GSZ=['small','modest','notable','major','life-changing'],BSZ=['minor','moderate','serious','major','devastating'];
+var AM=[2,4,7,11,16],MM=[150,800,4000,20000,100000];
+var GDOM=[
+['money','You receive a {s} windfall from {c}.','You suffer a {s} financial loss from {c}.','money','happy',
+`a work bonus|a tax refund|an old savings account|a lucky bet|a freelance gig|a stock tip|a garage sale|a distant relative's will|a legal settlement|a scratch-off ticket|a resold collectible|a rental deposit refund|a surprise dividend|a cashback deal|a side hustle|a forgotten bank account|a class-action payout|an insurance reimbursement|a crypto gamble|a generous gift`,
+`a bad investment|an online scam|a car repair|a medical bill|a lawsuit|a stolen wallet|a failed business deal|a tax audit|a burst pipe|an expensive mistake|a lost deposit|a market crash|a bad loan to a friend|a data breach|an overdraft spiral|a storm damage claim|a defective purchase|an identity theft case|a surprise fee|a stolen bike`],
+['work','A {s} career boost comes from {c}.','A {s} career setback comes from {c}.','happy','smarts',
+`a strong review|an impressed client|a helpful mentor|a bold pitch|a lucky introduction|a well-timed project|a new certification|a viral presentation|a recruiter's call|a successful launch|a glowing reference|a smart suggestion|a conference talk|an industry award|a team win|a deal you closed|an internal transfer|a fresh idea|a crisis you handled|a networking event`,
+`a missed deadline|office politics|a botched presentation|a rude client|a reorganization|a rumor about you|a rival's promotion|a costly error|a bad manager|a failed project|a layoff scare|a heated argument|a lost account|a compliance issue|a burnout stretch|a poor review|a data mix-up|a canceled contract|an awkward email|a security slip`],
+['health','You enjoy a {s} health improvement thanks to {c}.','You suffer a {s} health problem caused by {c}.','health','happy',
+`a new exercise habit|a better diet|a great sleep routine|a lucky checkup|a new doctor|a hiking trip|a yoga class|a quit-smoking push|a cooking streak|a stress-free month|a new wellness plan|a running club|a swim routine|a dental fix|a vision correction|a physical therapist|a walking habit|a meditation app|a sunny vacation|a hydration kick`,
+`a stubborn infection|overwork|a bad fall|food poisoning|a sports injury|poor sleep|a seasonal flu|a nasty allergy|a back strain|a dental emergency|an eye problem|a stress flare-up|a slow-healing wound|a bad reaction to medication|a car bump|a virus going around the office|a long cold snap|a skipped checkup|a burnt hand while cooking|a sprained ankle`],
+['family','A {s} joy comes to your family life through {c}.','A {s} family trouble arises from {c}.','happy','happy',
+`a surprise visit|a reconciliation|a holiday dinner|a family reunion|a heartfelt letter|a shared hobby|a long phone call|a birthday surprise|an old photo album|a road trip together|a graduation celebration|a good-news announcement|a weekend getaway|a cooking day together|a game night|a wedding invitation|a thoughtful gift|a family tradition|a forgiven argument|a baby shower`,
+`an argument over money|a missed birthday|a holiday feud|a broken promise|a misunderstanding|an unpaid favor|a sibling rivalry|a harsh comment|a forgotten anniversary|an awkward reunion|a family secret|a moving dispute|an inheritance quarrel|a late-night fight|a rumor|a cold shoulder|a caregiving burden|a political debate|a canceled visit|a long silence`],
+['social','A {s} social triumph comes from {c}.','A {s} social embarrassment comes from {c}.','happy','looks',
+`a party you hosted|a funny story|a new friend group|a charity event|a viral post|an old friend reconnecting|a club membership|a wedding toast|a neighborhood BBQ|a game night win|a compliment going around|a dance floor moment|a surprise party|a trivia night|a community award|a book club|a shared adventure|a clever joke|a helpful favor|a perfect first impression`,
+`a wrong-name mix-up|a spilled drink|a viral gaffe|a ruined party|a harsh joke|an ignored invite|a forgotten promise|an awkward toast|a group chat blunder|a stained shirt|a loud argument|a failed introduction|a missed reunion|a text sent to the wrong person|a clumsy fall|a spreading rumor|a rude comment|a dropped cake|a canceled plan|a bad haircut`],
+['home','Your home life gets a {s} lift from {c}.','Your home suffers a {s} problem from {c}.','happy','health',
+`a fresh paint job|a kind neighbor|a lucky appliance deal|a cozy renovation|a tidy-up streak|a new garden|a surprise gift|a smart upgrade|a plumbing fix|a new couch|a quiet street|a rent discount|a landlord's favor|a lower utility bill|a spotless cleaning day|a sturdy storm shelter|a new rug|a bright new lamp|a nice view from the window|a friendly roommate`,
+`a leaking roof|a burst pipe|a broken heater|a noisy neighbor|a pest invasion|a power outage|a flooded basement|a rent hike|a broken appliance|a mold discovery|a stuck lock|a break-in scare|a storm|a faulty wire|a clogged drain|a neighbor dispute|a cracked window|a sinking floor|a lost key|a fire alarm scare`],
+['luck','A {s} stroke of luck: {c}.','A {s} stroke of bad luck: {c}.','happy','looks',
+`a stranger pays your tab|you find a forgotten gift card|your flight gets upgraded|you win a raffle|a parking spot opens right up|you catch every green light|a coupon saves you big|you win a free meal|someone returns your lost wallet|a pop-up sale hits your size|you are picked for a prize draw|your package arrives early|a seat opens in a full restaurant|an old friend offers a favor|you find cash in an old coat|the weather clears just in time|your ticket is a winner|a refund arrives out of nowhere|you get a surprise discount|a donation drive gives you a gift`,
+`your phone falls in a puddle|you miss your train by seconds|your flight is canceled|a pigeon ruins your jacket|you lock yourself out|you lose your keys|a pothole wrecks your tire|your laptop crashes|your package is stolen|you spill coffee on documents|a parking ticket appears|you get stuck in traffic|your umbrella breaks in the rain|you lose your wallet|a sale ends the day before|your card is declined|you miss a call that mattered|you get a flat tire|a tooth cracks on candy|your bag gets swapped at the airport`],
+['learning','You gain a {s} insight from {c}.','You make a {s} mistake involving {c}.','smarts','happy',
+`a good book|an online course|a mentor's advice|a documentary|a museum visit|a chess match|a night class|a podcast|a chat with a stranger|a failed experiment|a workshop|a language app|a library visit|a lecture|a puzzle|a long walk|a debate|a travel experience|a hands-on project|a patient teacher`,
+`a misread contract|a bad spreadsheet|a wrong turn|a bad recipe|a forgotten password|a missed exam|a confusing form|a fake news story|a wrong assumption|a misplaced decimal|a bungled translation|a forgotten deadline|a mislabeled file|a bad map|a technical glitch|an expired coupon|a misheard instruction|a tax form|a badly assembled shelf|an overconfident guess`],
+['travel','A {s} adventure comes from {c}.','A {s} travel mishap comes from {c}.','happy','health',
+`a spontaneous road trip|a cheap flight deal|a beach weekend|a mountain hike|a city break|a cruise upgrade|a festival abroad|a camping trip|a train journey|a local guide|a hidden trail|a surprise vacation|a food tour|a sunrise drive|a museum trip|a ski weekend|a lake cabin|a backpacking trip|a desert drive|a friend's invitation`,
+`a lost passport|a missed connection|a canceled hotel|a stolen suitcase|a food-poisoning trip|a sunburned day|a rental car problem|a wrong turn abroad|a delayed train|an overbooked flight|a broken-down bus|a lost phone|a rainy week|a broken luggage wheel|a long customs line|a pickpocket|a noisy hostel|a wrong ticket|a stormy ferry ride|an altitude headache`],
+['hobby','A {s} creative success comes from {c}.','A {s} creative flop comes from {c}.','happy','looks',
+`a painting you made|a song you wrote|a short film|a blog post|a handmade gift|a garden bloom|a baked masterpiece|a photograph|a model you built|a poem|a quilt|a podcast episode|a craft fair|a piece of pottery|a knitted sweater|a dance routine|a carved sculpture|a costume|a comic strip|a charity auction piece`,
+`a ruined painting|a bad performance|a deleted file|a burnt cake|a failed project|a broken instrument|a lost sketchbook|a torn costume|a cracked pottery piece|a wasted weekend|a crashed video render|a canceled show|a negative review|a blurry photo|a tangled yarn|a collapsed model|a spoiled batch|a scratched record|a dried-out paint set|a missed contest deadline`]
+];
+// life-situation changes (not just stats): people, jobs, traits
+function sit(good){
+  var live=G.people.filter(function(p){return!p.dead}),opts=[];
+  if(good){
+    opts.push(function(){var f=person('Friend',null,50);G.people.push(f);return' You made a new friend, '+f.n+'.'});
+    if(!hasPartner()&&G.age>=16)opts.push(function(){var p=person('Partner',null,50);G.people.push(p);return' You started dating '+p.n+'.'});
+    if(G.job&&!G.retired)opts.push(function(){G.salary=Math.round(G.salary*1.15);return' You got a raise. Salary is now '+fmt(G.salary)+'.'});
+    if(!G.job&&!G.retired&&G.age>=18&&!G.college)opts.push(function(){var j=pick(JB.filter(function(x){return meets(x.r)}));G.job=j.t;G.salary=j.s;G.track=null;G.lvl=0;return' You landed a new job: '+j.t.toLowerCase()+' at '+fmt(j.s)+'/yr.'});
+    if(G.traits.length<3)opts.push(function(){var n=shuf(TR.filter(function(x){return G.traits.indexOf(x)<0}))[0];G.traits.push(n);return' You picked up a new trait: '+n.toLowerCase()+'.'});
+    if(live.length)opts.push(function(){var p=pick(live);p.b=Math.min(100,p.b+15);return' Your bond with '+p.n.split(' ')[0]+' deepened.'});
+  }else{
+    var fr=live.filter(function(p){return p.t==='Friend'}),pt=live.filter(function(p){return p.t==='Partner'});
+    if(fr.length)opts.push(function(){var p=pick(fr);p.dead=true;return' You lost touch with '+p.n+'.'});
+    if(pt.length)opts.push(function(){var p=pick(pt);p.dead=true;return' '+p.n+' broke up with you.'});
+    if(G.job&&!G.retired)opts.push(function(){var j=G.job;G.job=null;G.salary=0;G.track=null;return' You lost your job as a '+j.toLowerCase()+'.'});
+    if(G.traits.length)opts.push(function(){var n=G.traits.splice(rnd(0,G.traits.length-1),1)[0];return' You lost a trait: '+n.toLowerCase()+'.'});
+    if(live.length)opts.push(function(){var p=pick(live);p.b=Math.max(0,p.b-15);return' Your bond with '+p.n.split(' ')[0]+' weakened.'});
+  }
+  return opts.length?pick(opts)():'';
+}
+function genEvent(done){
+  var good=chance(.5+(T('Lucky')?.1:0)),w=[1,.29,.14,.08,.056],r=Math.random()*1.566,t=0;
+  // the bigger the event (good or bad), the rarer it is
+  while(t<4&&r>w[t]){r-=w[t];t++}
+  var d=pick(GDOM),c=pick((good?d[5]:d[6]).split('|')),sg=good?1:-1;
+  var txt=(good?d[1]:d[2]).replace('{s}',(good?GSZ:BSZ)[t]).replace('{c}',c),fx={};
+  var ms=d[0]==='luck'?.1:1;
+  fx[d[3]]=sg*(d[3]==='money'?Math.round(MM[t]*ms):AM[t]);
+  if(d[4]!==d[3])fx[d[4]]=sg*(d[4]==='money'?Math.round(MM[t]*ms/2):Math.round(AM[t]/2));
+  if(d[0]==='family'){var ps=G.people.filter(function(p){return!p.dead});if(ps.length){var p=pick(ps);p.b=Math.max(0,Math.min(100,p.b+sg*3*(t+1)));txt+=' Your bond with '+p.n.split(' ')[0]+(good?' grows.':' weakens.')}}
+  if(chance(.15+.1*t))txt+=sit(good);
+  result(txt.charAt(0).toUpperCase()+txt.slice(1),fx,done);
+}
+/* ---------- decision events: adults 10x20x5x2 = 2000, kids 20x5x2 = 200 ---------- */
+var SZ=['small','moderate','significant','major','life-changing'],AMK=[1,2,3,5,7],MMK=[5,15,40,100,250];
+var DDOM=[
+['money','happy',`investing in a friend's startup|buying a used car|refinancing a loan|putting savings into stocks|buying a rental property|lending money to a cousin|taking a quick-cash deal|joining a lottery syndicate|starting a side business|paying off debt early|buying crypto|negotiating a settlement|buying collectible art|joining a too-good-to-be-true scheme|opening a franchise|selling an old asset|taking a high-interest loan|buying insurance|investing in index funds|buying a vacation timeshare`],
+['smarts','health',`asking for a raise|switching companies|accepting a transfer abroad|reporting a coworker|taking a risky promotion|going freelance|starting your own company|going back to school|working through a holiday|leading a tough project|joining a startup|quitting without a plan|accepting a counteroffer|moving cities for work|taking a pay cut for passion|confronting your boss|taking a night shift|training your rival|going part-time|launching a new product`],
+['health','happy',`starting a strict diet|trying an experimental treatment|training for a marathon|skipping a checkup|getting surgery|quitting a bad habit|joining a gym|trying a new medication|taking a rest sabbatical|starting therapy|getting a second opinion|running a long race|taking up boxing|fasting for a week|going to a wellness retreat|getting a tattoo|trying a cleanse|treating an old injury|climbing a mountain|donating blood`],
+['happy','health',`moving closer to relatives|hosting the holidays|reconnecting with an estranged sibling|helping a parent|adopting a pet|planning a big wedding|confronting a family secret|paying a relative's bills|taking in a relative|forgiving an old grudge|planning a family vacation|settling a family dispute|having a heart-to-heart|co-signing a loan for family|attending a tense reunion|moving a parent in|throwing a surprise party|cutting off a toxic relative|starting a family tradition|sharing a big secret`],
+['happy','looks',`hosting a big party|joining a club|confronting a friend|attending a wedding abroad|going on a blind date|speaking at an event|joining a protest|asking someone out|forgiving a friend|starting a podcast|joining a sports league|cutting off a friend|volunteering for a cause|accepting a dare|throwing a reunion|joining a choir|running for local office|going to a festival alone|lending your couch|sharing a viral post`],
+['happy','health',`buying new furniture|renovating the kitchen|moving to a new city|taking on a roommate|buying a smart home setup|fixing the roof yourself|planting a big garden|downsizing|upgrading to a bigger place|installing solar panels|repainting every room|hiring a contractor|selling at a bad time|building a deck|buying a fixer-upper|switching landlords|installing a security system|renting out a room|buying a generator|adding a home office`],
+['happy','looks',`taking a mystery deal|answering an unknown call|returning a stranger's lost bag|entering a contest|trusting a stranger|buying a raffle ticket|taking a shortcut|joining a flash sale|opening a strange package|betting on a long shot|accepting an offbeat job offer|buying a used lottery ticket|following a gut feeling|accepting a free trial|taking a late-night road|answering a cold email|picking a door at random|taking an unplanned detour|trusting a tip|skipping your usual route`],
+['smarts','happy',`enrolling in a degree program|learning a new language|taking a coding bootcamp|reading a thick book|attending a lecture series|starting a research project|joining a debate team|taking an art class|studying for a license|learning an instrument|taking an online degree|attending a workshop|teaching a class|reading the fine print|learning to cook|joining a book club|taking a math course|attending a conference|learning to invest|learning first aid`],
+['happy','health',`backpacking across Europe|taking a cruise|booking a last-minute flight|moving abroad|hiking a long trail|renting a camper van|visiting a remote island|taking a solo trip|going on a safari|staying in a cheap hostel|driving cross-country|taking a ski trip|going to a music festival|visiting a friend abroad|taking a risky shortcut|exploring a cave|booking a mystery trip|sailing a small boat|skipping travel insurance|taking a night train`],
+['happy','looks',`entering an art contest|selling your crafts|starting a video channel|joining a band|publishing a book|building a workshop|entering a bake-off|performing at open mic|learning to paint|starting a garden club|buying pricey gear|competing in a tournament|opening a market stall|writing a screenplay|restoring an old car|joining a theater group|training for a race|starting a blog|making a short film|taking a pottery class`]
+];
+var KDOM=[
+['smarts','happy',`doing your homework early|joining the science club|entering a spelling contest|reading ahead in class|asking the teacher for help`],
+['happy','health',`sharing your lunch|going on a school trip|inviting a new kid to play|trying out for the school play|standing up for a friend`],
+['health','happy',`joining a sports team|eating your vegetables|biking to school|trying out for track|staying up too late`],
+['looks','happy',`trying a new haircut|picking your own outfit|joining the dance team|wearing your braces|posing for school photos`]
+];
+function decEvent(done,kid){
+  var w=[1,.29,.14,.08,.056],r=Math.random()*1.566,t=0;
+  // bigger stakes (good or bad outcome) are rarer
+  while(t<4&&r>w[t]){r-=w[t];t++}
+  var d=pick(kid?KDOM:DDOM),g=d[0],k=d[1],c=pick(d[2].split('|'));
+  var amt=function(s,m){return Math.round((s==='money'?(kid?MMK:MM)[t]:(kid?AMK:AM)[t])*m)};
+  var F=function(s,m,sg){var f={};f[s]=sg*amt(s,m);return f};
+  var p=Math.max(.2,Math.min(.85,.5+(G.smarts-50)/400+(T('Lucky')?.08:0)+(T('Ambitious')?.04:0)));
+  var o,S=function(ok){return chance(.15+.1*t)?sit(ok):''};
+  if(chance(.5)){
+    o=[{l:'Go for it',s:'Risky: a big win or a big loss',go:function(){
+        if(chance(p))result('You went for it, and it paid off.'+S(1),F(g,1.4,1),done);
+        else result('You went for it, but it backfired.'+S(0),F(g,1,-1),done)}},
+       {l:'Play it safe',s:'A small, steady result',go:function(){result('You played it safe.',{happy:1},done)}}];
+  }else{
+    o=[{l:'Commit fully',s:'Costs you something, usually pays off',go:function(){
+        var f=F(k,.5,-1);
+        if(chance(.8)){f[g]=(f[g]||0)+amt(g,1.2);result('You committed fully, and it paid off.'+S(1),f,done)}
+        else result('You committed fully, but it did not pan out.'+S(0),f,done)}},
+       {l:'Hold back',s:'Cheap and easy',go:function(){result('You held back and kept things easy.',{happy:1},done)}}];
+  }
+  ask('Decision','You face a '+SZ[t]+' decision about '+c+'.',o);
+}
+/* ---------- the monthly loop ---------- */
+function ageUp(){
+  if(!G.alive||busy())return;
+  G.q=6;G.ap=3;G.adx=0;G.gc=(G.gc||0)+1;if(G.gc>=3){G.gc=0;G.fire=1}
+  monthStep();
+}
+function monthStep(){
+  if(!G.alive||busy())return;
+  var bday=false;G.month++;
+  if(G.month>11){G.month=0;G.age++;bday=true}
+  var a=G.age,m=G.month,fin=afterMonth;
+  G.people.forEach(function(p){if(!p.dead){if(!p.seen)p.b=Math.max(0,p.b-.5);p.seen=false}});
+  if(G.jail>0){
+    G.jail--;G.happy=clamp(G.happy-1);if(chance(.1))G.health=clamp(G.health-2);
+    if(G.jail===0){G.job=null;G.salary=0;G.track=null;say('You were released. You lost your job while you were away.')}
+    else if(chance(.4))say(pick(['Prison life is tough.','You counted the days.','You kept your head down.']));
+    return fin();
+  }
+  // money
+  if(G.job||G.retired)G.money+=G.salary/12*(1-(.12+Math.min(.23,G.salary/500000)));
+  if(a>=18)spend(G.house?600:(G.college&&a<26&&parentAlive()?0:(a<22&&parentAlive()?500:1100)));
+  spend(carUp());
+  if(a>=6&&a<18&&G.people.some(function(p){return!p.dead&&(p.t==='Mother'||p.t==='Father')}))G.money+=Math.round(allowAmt(a)*allowMult());
+  var dt=DIET[dIdx()];
+  if(a>=18){var dc=dt[1]-200;if(dc>0)spend(dc);else G.money-=dc}
+  G.health=clamp(G.health+dt[2]);G.happy=clamp(G.happy+dt[3]);G.looks=clamp(G.looks+dt[4]);G.smarts=clamp(G.smarts+dt[5]);
+  G.happy=clamp(G.happy-(G.happy>50?(G.happy-50)*.04:-(50-G.happy)*.02));if(a>=25)G.health=clamp(G.health-(.15+Math.max(0,a-40)*.01));G.looks=clamp(G.looks-(a>30?.08:0));
+  G.people.forEach(function(p){if(p.age!=null&&p.age<18&&!p.dead)spend(400)});
+  if(G.house){G.homeVal*=1.003;spend(G.hup||0)}
+  (G.inv||[]).forEach(function(i){if(i.type==='car')i.val*=.995});
+  if(G.mort>0){G.mort*=1.004;var mp=Math.min(G.mpay||1100,G.mort);spend(mp);G.mort-=mp;if(G.mort<1){G.mort=0;say('You paid off your mortgage!')}}
+  if(G.college){var ow=G.college.cost*(1-(G.college.cov||0))/12;if(G.college.pay==='cash')spend(ow);else G.debt+=ow;G.cm++}
+  if(G.debt>0){G.debt*=1.004;var pay=Math.min(G.money,Math.max(25,G.debt*.02),G.debt);G.money-=pay;G.debt-=pay;if(G.debt<1)G.debt=0}
+  if(a>=18&&!G.job&&!G.college&&!G.retired)G.happy=clamp(G.happy-1);
+  if(G.happy<15)G.health=clamp(G.health-1);
+  // birthday
+  if(bday){
+    say('Happy birthday! You are now '+a+'.');G.asks=0;G.pnw=Math.max(0,Math.round(pnw()*(.92+Math.random()*.2)));
+    if([6,10,13,16].indexOf(a)>-1)say('Your allowance is now '+fmt(Math.round(allowAmt(a)*allowMult()))+' a month.');
+    if(a>40)G.health=clamp(G.health-rnd(0,2)-Math.floor((a-40)/20));
+    if(G.job&&!G.retired&&chance(.12+(T('Ambitious')?.12:0)+G.smarts/1000)){
+      var tr=TRACKS[G.track];
+      if(tr&&G.lvl<tr.length-1){G.lvl++;G.job=tr[G.lvl];G.salary=Math.round(G.salary*1.3);G.happy=clamp(G.happy+5);say('You were promoted to '+G.job.toLowerCase()+'! Salary is now '+fmt(G.salary)+'.')}
+      else{G.salary=Math.round(G.salary*1.05);say('You got a raise. Salary is now '+fmt(G.salary)+'.')}
+    }
+    G.people.forEach(function(p){if(p.age!=null)p.age++});
+  }
+  if(G.job&&!G.retired&&chance(.003)){say('You were laid off from your job as a '+G.job.toLowerCase()+'.');G.job=null;G.salary=0;G.track=null;G.happy=clamp(G.happy-10)}
+  // relationships
+  relMonth();newsTick();extraMonth();
+  // school
+  var inSchool=(G.k12||G.college)&&m!==5&&m!==6&&m!==7;
+  if(inSchool){var tgt=G.smarts/25;G.gpa=Math.max(0,Math.min(4,G.gpa+(tgt-G.gpa)*.12+(Math.random()-.5)*.1))}
+  if(G.college)G.smarts=clamp(G.smarts+.15);
+  if(m===8&&a>=5){
+    if(a===5){G.k12=true;G.grade=0;say('You started kindergarten.')}
+    else if(G.k12){G.grade++;say('You started '+ord(G.grade)+' grade.'+(G.grade===6?' Welcome to middle school.':G.grade===9?' Welcome to high school.':''))}
+  }
+  if(G.k12&&m===5&&G.grade===12)return hsGrad(fin);
+  if(G.college&&G.cm>=G.college.years*12)return collegeGrad(fin);
+  if(bday&&a===65&&G.job)return retire(fin);
+  if(G.k12&&m===4&&(a===17||a===18)&&!G['pr'+a])return prom(fin);
+  if(a>=3&&G.q===1)return newDec(fin);
+  if(a>=4&&G.q===4&&G.fire){G.fire=0;return a>=18?(chance(.5)?genEvent(fin):decEvent(fin,false)):decEvent(fin,true)}
+  if(a>=8&&chance(.02)&&skillEvent(fin))return;
+  if(chance(.05)&&randEvent(fin))return;
+  if(chance(.3))say(pick(['A quiet month.','Nothing much happened.','You settled into a routine.']));
+  fin();
+}
+function afterMonth(){
+  checkAch();
+  var p=(G.age>70?(G.age-70)*.02/12:0)+(G.health<30?.1/12:0);
+  if(G.health<=0)return die('poor health');
+  if(chance(p))return die(G.age>=75?'old age':'illness');
+  if(G.q>1){G.q--;render();return monthStep()}
+  G.q=0;
+  render();save();
+}
+function die(cause){
+  G.alive=false;G.cause=cause;say('You passed away from '+cause+' at age '+G.age+'.');
+  if(G.age>best){best=G.age;try{localStorage.setItem('ll_best',best)}catch(e){}}
+  render();save();
+  $('sheet').innerHTML=''+lifeSummary(cause)+'';
+  var b=document.createElement('button');b.className='btn';b.style.width='100%';b.textContent='Start a new life';
+  b.onclick=function(){$('modal').classList.remove('on');AdBridge.showInterstitial();newLife()};
+  if(!G.revived){var rv=document.createElement('button');rv.className='opt';rv.style.textAlign='center';rv.textContent='Watch an ad to be revived';rv.onclick=function(){AdBridge.showRewarded(function(ok){if(ok){G.alive=true;G.revived=1;G.health=50;say('You were given a second chance at life.');$('modal').classList.remove('on');render();save()}})};$('sheet').appendChild(rv)}
+  var sh=document.createElement('button');sh.className='opt';sh.style.textAlign='center';sh.textContent='Share your life story';
+  sh.onclick=function(){var tx=G.sum||'';try{if(navigator.share)navigator.share({text:tx});else navigator.clipboard.writeText(tx).then(function(){sh.textContent='Copied to clipboard'})}catch(e){}};
+  $('sheet').appendChild(sh);$('sheet').appendChild(b);$('modal').classList.add('on');
+}
+
+var TRACKS={retail:['Retail clerk','Shift lead','Store manager','District manager'],cons:['Consultant','Senior consultant','Principal','Partner'],eng:['Engineer','Senior engineer','Staff engineer','Director of engineering'],tech:['Technician','Senior technician','Supervisor','Plant manager'],md:['Resident physician','Physician','Specialist','Chief of medicine'],jd:['Associate attorney','Senior associate','Partner','Managing partner'],mba:['Manager','Director','Vice president','CEO'],phd:['Researcher','Professor','Tenured professor','Department chair']};
+var START={none:['retail',18000],comm:['tech',42000],state:['eng',70000],ivy:['cons',100000],md:['md',120000],jd:['jd',110000],mba:['mba',115000],phd:['phd',75000]};
+var GS=[['md','Medical school',4,55000,85],['jd','Law school',3,50000,75],['mba','MBA program',2,60000,65],['phd','PhD program',5,5000,70]];
+function setJob(ed,mult){var s=START[ed]||START.none;G.track=s[0];G.lvl=0;G.job=TRACKS[s[0]][0];G.salary=Math.round(s[1]*(mult||1)/1000)*1000}
+var JB=[];
+function jg(r,s){s.split(',').forEach(function(x){var p=x.split(':');JB.push({t:p[0],s:+p[1]*1000,r:r})})}
+jg('n','Cashier:22,Barista:24,Fast food crew:21,Warehouse worker:30,Delivery driver:34,Janitor:28,Landscaper:32,Security guard:33,Construction laborer:38,Server:26,Retail associate:23,Call center agent:31,Line cook:30,Farm hand:27,Mover:29,Receptionist:34,Car wash attendant:22,Dishwasher:20,Stock clerk:25,Bike courier:26,Taxi driver:31,Housekeeper:27,Parking attendant:24,Tour guide:29,Gas station attendant:23,Handyman:40,Truck driver:52,Sales rep:45,Bartender:34,Roofer:42');
+jg('c','Electrician:58,Plumber:56,HVAC technician:52,Welder:50,Dental hygienist:78,Paralegal:52,Medical assistant:38,EMT:40,Pharmacy technician:38,Licensed practical nurse:54,Cosmetologist:36,Auto mechanic:46,Chef:55,Commercial pilot:98,Police officer:62,Firefighter:58,Radiology technician:66,Web developer:72,IT support specialist:50,Surveyor:54,Real estate agent:60,Massage therapist:42,Air traffic controller:120,Wind turbine technician:60');
+jg('b','Teacher:48,Accountant:68,Software engineer:110,Registered nurse:80,Civil engineer:84,Marketing manager:85,Graphic designer:52,Social worker:50,Journalist:46,Financial analyst:82,Data analyst:75,Architect:86,HR manager:78,Product manager:120,Cybersecurity analyst:98,Mechanical engineer:88,Chemist:72,Librarian:52,Environmental scientist:68,Actuary:105,UX designer:90,Sales manager:92,Urban planner:74,Statistician:88');
+jg('g','Occupational therapist:96,Physician assistant:125,Nurse practitioner:120,Data scientist:130,School principal:105,Economist:115,Speech pathologist:85,Management consultant:140');
+jg('md','Surgeon:300,Family doctor:220,Pediatrician:190,Psychiatrist:250,Anesthesiologist:320');
+jg('jd','Corporate lawyer:180,Public defender:75,Judge:170,Patent attorney:165');
+jg('mba','Investment banker:200,Operations director:150,Chief marketing officer:210');
+jg('phd','Research scientist:130,University professor:105');
+var RQ={n:'No degree needed',c:'Needs a certificate or associate degree',b:'Needs a bachelor\'s degree',g:'Needs a graduate degree',md:'Needs medical school',jd:'Needs law school',mba:'Needs an MBA',phd:'Needs a PhD'};
+function meets(r){var rk={none:0,comm:1,state:2,ivy:2,md:3,jd:3,mba:3,phd:3}[G.ed]||0;if(r==='n')return true;if(r==='c')return rk>=1;if(r==='b')return rk>=2;if(r==='g')return rk>=3;return G.ed===r}
+function jobHunt(){
+  var el=shuf(JB.filter(function(j){return meets(j.r)&&j.t!==G.job})),ot=shuf(JB.filter(function(j){return!meets(j.r)}));
+  var pk=el.slice(0,2),rest=shuf(el.slice(2).concat(ot)).slice(0,3);
+  var L=shuf(pk.concat(rest)).map(function(j){var ok=meets(j.r);return{l:j.t,s:fmt(j.s)+'/yr \u00b7 '+RQ[j.r]+(ok?'':' (you do not qualify)'),dis:!ok,go:function(){interview(j)}}});
+  L.push({l:'Never mind',go:function(){G.ap++;$('modal').classList.remove('on')}});
+  ask('Job openings','Five openings this month. Pick one to interview for.',L);
+}
+function interview(j){
+  ask('Interview: '+j.t,'The interview is tomorrow. How do you prepare?',[
+    {l:'Research the company and rehearse',s:'Best odds',go:function(){iq(j,.12)}},
+    {l:'Dress sharp and stay calm',go:function(){iq(j,.05+(G.looks>60?.03:0))}},
+    {l:'Wing it',s:'Risky',go:function(){iq(j,-.08)}}]);
+}
+var IQ=[
+ ['Why do you want this job?',[['Passion for the work',.06],['The paycheck',-.03],['I just need a job',-.1]]],
+ ['What is your biggest weakness?',[['Honest, with a plan to improve',.07],['I have none',-.12],['I work too hard',-.04]]],
+ ['Where do you see yourself in five years?',[['Growing with the company',.06],['Running the place',-.05],['No idea',-.09]]],
+ ['A coworker takes credit for your work. What do you do?',[['Talk to them directly',.07],['Tell the boss right away',-.02],['Stay quiet',-.06]]]
+];
+function iq(j,prep){var q=pick(IQ);ask('The interviewer asks',q[0],shuf(q[1]).map(function(a){return{l:a[0],go:function(){finishInterview(j,prep+a[1])}}}))}
+function finishInterview(j,bonus){
+  var base=.45+G.smarts/300+G.looks/600+(T('Charming')?.08:0)-(T('Shy')?.06:0)-Math.min(.25,(j.s/1000-20)/400)-(G.record?Math.min(.25,.08+.04*G.record):0);
+  var p=Math.max(.05,Math.min(.95,base+bonus));
+  if(chance(p)){G.job=j.t;G.salary=j.s;G.track=null;G.lvl=0;result('You got the job: '+j.t.toLowerCase()+' at '+fmt(j.s)+'/yr!',{happy:6})}
+  else result('You did not get the '+j.t.toLowerCase()+' job. They went with another candidate.',{happy:-4});
+}
+/* ---------- school ---------- */
+function hsGrad(done){
+  G.k12=false;
+  var sc=G.gpa*15+G.smarts*.4;
+  ask('High school graduation','You graduated with a '+G.gpa.toFixed(2)+' GPA. What next?',[
+    {l:'Apply to an Ivy League school',s:'Very competitive. $40,000/yr',dis:G.rej.ivy,go:function(){enroll('ivy',sc,done)}},
+    {l:'Apply to a state university',s:'4 years, $22,000/yr',dis:G.rej.state,go:function(){enroll('state',sc,done)}},
+    {l:'Community college',s:'2 years, $5,000/yr',go:function(){enroll('comm',sc,done)}},
+    {l:'Get a job',s:'Retail clerk, $18,000/yr',go:function(){setJob('none');result('You started work as a retail clerk.',{},done)}},
+    {l:'Travel for a year',s:'Costs $3,000',go:function(){result('You traveled the world.',{money:-3000,happy:10},done)}}
+  ]);
+}
+function enroll(t,sc,done){
+  var C={ivy:{n:pick(IVY),cost:40000,years:4,req:88},state:{n:pick(STATE),cost:22000,years:4,req:62},comm:{n:'Community College',cost:5000,years:2,req:0}}[t];
+  var p=Math.max(.03,Math.min(.97,(sc-C.req+18)/36));
+  if(t!=='comm'&&!chance(p)){G.rej[t]=1;G.k12=false;return result('You were rejected by '+C.n+'.',{happy:-8},function(){hsGrad(done)})}
+  G.college={n:C.n,name:C.n,tier:t,cost:C.cost,years:C.years,cov:0,pay:'fed'};G.cm=0;
+  result('You were accepted to '+C.n+'!'+(t==='ivy'?' Your family is ecstatic.':''),{happy:10},function(){fundMenu(done)});
+}
+function collegeGrad(done){
+  var c=G.college,t=c.tier;G.college=null;G.cm=0;G.ed=t;
+  if(c.grad){setJob(t,.85+G.gpa*.05);return result('You finished '+c.n.toLowerCase()+' and became a '+G.job.toLowerCase()+' earning '+fmt(G.salary)+'.',{happy:8,smarts:3},done)}
+  G.degree=t==='comm'?'Associate degree':'Bachelor\'s degree';
+  G.gmsg='You graduated from '+c.n+' with a '+G.gpa.toFixed(2)+' GPA.';
+  if(t==='comm'){setJob(t,.8+G.gpa*.07);return result(G.gmsg+' You became a '+G.job.toLowerCase()+' earning '+fmt(G.salary)+'.',{happy:8,smarts:3},done)}
+  gradChoice(done);
+}
+function gradChoice(done){
+  var sc=G.gpa*15+G.smarts*.4,t=G.ed;
+  var o=GS.map(function(g){return{l:g[1],s:g[2]+' years, '+fmt(g[3])+'/yr',dis:G.rej[g[0]],go:function(){
+    var p=Math.max(.03,Math.min(.95,(sc-g[4]+18)/36));
+    if(!chance(p)){G.rej[g[0]]=1;return result('You were rejected by '+g[1].toLowerCase()+'.',{happy:-8},function(){gradChoice(done)})}
+    G.college={n:g[1],name:g[1],tier:g[0],cost:g[3],years:g[2],grad:1,cov:0,pay:'fed'};G.cm=0;
+    result('You were accepted to '+g[1].toLowerCase()+'!',{happy:8},function(){fundMenu(done)})}}});
+  o.push({l:'Start working',s:'Use your bachelor\'s degree',go:function(){setJob(t,.8+G.gpa*.07);result('You became a '+G.job.toLowerCase()+' earning '+fmt(G.salary)+'.',{happy:8,smarts:3},done)}});
+  ask('Graduation',G.gmsg+' What next?',o);
+}
+function retire(done){
+  ask('Retirement','You are 65. Time to retire?',[{l:'Retire',s:'Pension: 40% of your salary',go:function(){G.retired=true;G.salary=Math.round(G.salary*.4);G.job=null;result('You retired.',{happy:5},done)}}]);
+}
+
+/* ---------- relationships ---------- */
+function relMonth(){
+  G.people.forEach(function(p){
+    if(p.dead)return;
+    if((p.t==='Mother'||p.t==='Father')&&G.age>35&&chance(.0004*(G.age-35))){p.dead=true;say(p.n+' ('+p.t.toLowerCase()+') passed away.');G.happy=clamp(G.happy-15);
+      var oth=G.people.some(function(q){return!q.dead&&q!==p&&(q.t==='Mother'||q.t==='Father')});
+      if(G.age>=18){var inh=Math.round(pnw()*(oth?.1:.7)/1000)*1000;if(inh>0){G.money+=inh;G.pnw=Math.max(0,pnw()-inh);say('You inherited '+fmt(inh)+'.')}}}
+    else if(p.t==='Friend'&&p.b<8){p.dead=true;say('You drifted apart from '+p.n+'.')}
+    else if(p.t==='Partner'&&p.b<15){p.dead=true;say(p.n+' broke up with you.');G.happy=clamp(G.happy-10)}
+    else if(p.t==='Spouse'&&p.b<10){p.dead=true;spend(10000);say(p.n+' divorced you. Legal fees cost $10,000.');G.happy=clamp(G.happy-20)}
+  });
+}
+function people(){
+  if(!G.alive||busy())return;
+  var L=G.people.filter(function(p){return!p.dead}).map(function(p){return{l:p.n,s:p.t+(p.age!=null?' · Age '+p.age:'')+' · Bond '+Math.round(p.b)+'%',go:function(){menu(p)}}});
+  L.push({l:'Close',go:function(){$('modal').classList.remove('on')}});
+  ask('People',(G.people.some(function(p){return!p.dead&&(p.t==='Mother'||p.t==='Father')})?'Family net worth: about '+fmt(pnw())+'. ':'')+(G.pets&&G.pets.length?'Pets: '+G.pets.map(function(p){return p.n+' the '+PT[p.i][0].toLowerCase()}).join(', ')+'. ':'')+'Tap someone to spend time with them.',L);
+}
+function menu(p){
+  if(p.t==='Rival')return rivalMenu(p);
+  var o=[
+    {l:'Spend time',s:'+8 bond, +3 happiness (once a month)',dis:p.seen,go:function(){p.seen=true;p.b=Math.min(100,p.b+8);result('You spent time with '+p.n+'.',{happy:3})}},
+    {l:'Give a gift',s:'$50, +12 bond',go:function(){p.b=Math.min(100,p.b+12);p.seen=true;result('You gave '+p.n+' a gift.',{money:-50,happy:1})}}
+  ];
+  if(p.t==='Partner')o.push({l:'Propose marriage',s:'Needs a strong bond',dis:p.b<65||G.age<20,go:function(){
+    if(chance(p.b/100)){p.t='Spouse';p.b=Math.min(100,p.b+10);wedding(p)}
+    else{p.b=Math.max(0,p.b-15);result(p.n+' said no.',{happy:-10})}}});
+  if(p.t==='Partner'||p.t==='Spouse')o.push({l:p.t==='Spouse'?'Divorce':'Break up',go:function(){p.dead=true;if(p.t==='Spouse')spend(10000);result('You split up with '+p.n+'.',{happy:-8})}});
+  if(p.t==='Child')o.push({l:'Help with schoolwork',s:'+4 bond (once a turn)',dis:p.seen,go:function(){p.seen=true;p.b=Math.min(100,p.b+4);result('You helped '+p.n.split(' ')[0]+' with schoolwork.',{happy:2})}},{l:'Sign up for an activity',s:'$100, +5 bond',dis:p.seen,go:function(){p.seen=true;p.b=Math.min(100,p.b+5);result(p.n.split(' ')[0]+' loves their new activity.',{money:-100,happy:2})}},{l:'Throw a birthday party',s:'$300, +8 bond',dis:p.seen,go:function(){p.seen=true;p.b=Math.min(100,p.b+8);result('You threw '+p.n.split(' ')[0]+' a party.',{money:-300,happy:3})}});
+  o.push({l:'Back',go:function(){$('modal').classList.remove('on');people()}});
+  ask(p.n,p.t+' · Bond '+Math.round(p.b)+'%',o);
+}
+
+/* ---------- news feed: 20,000 filler headlines (10 categories x 10 templates x 4 topics x 50 places) ---------- */
+var NT=[
+'{X} hits {P}, locals report.|Forecasters expect {X} to continue in {P}.|{P} braces for {X} this weekend.|Schools in {P} adjust schedules amid {X}.|{X} dominates the conversation in {P}.|Meteorologists in {P} are tracking {X}.|Residents of {P} share photos of {X}.|{P} officials issue advice after {X}.|Local shops in {P} react to {X}.|{X} leaves {P} talking.',
+'{X} has fans in {P} buzzing.|Sports radio in {P} is all about {X}.|{P} fans celebrate {X}.|Analysts call {X} the story of the week in {P}.|Bars in {P} fill up after {X}.|Youth teams in {P} are inspired by {X}.|{X} puts {P} on the sports map.|Commentators discuss {X} in {P}.|Kids in {P} reenact {X} at recess.|Ticket sales in {P} jump after {X}.',
+'Shoppers in {P} notice {X}.|{X} reported across {P}.|Economists weigh in on {X} in {P}.|Small businesses in {P} react to {X}.|{X} is the topic at a {P} town hall.|Analysts in {P} watch {X} closely.|Residents of {P} discuss {X}.|The {P} chamber of commerce comments on {X}.|{X} shapes holiday plans in {P}.|Local radio in {P} covers {X}.',
+'Researchers in {P} react to {X}.|{X} draws crowds at a {P} science museum.|Students in {P} follow news of {X}.|Universities in {P} discuss {X}.|{X} sparks debate among {P} scientists.|A {P} lab comments on {X}.|{X} is a hot topic at {P} libraries.|Teachers in {P} use {X} in class.|{X} makes headlines in {P}.|Experts in {P} explain {X} to the public.',
+'{X} is all anyone talks about in {P}.|Fans in {P} line up for {X}.|Critics in {P} weigh in on {X}.|{P} cinemas and clubs buzz over {X}.|Social feeds in {P} light up over {X}.|{X} tops the charts in {P}.|Local reviewers in {P} discuss {X}.|{X} inspires a trend in {P}.|Teens in {P} are obsessed with {X}.|{P} radio stations spotlight {X}.',
+'{P} residents discuss {X}.|The city council in {P} debates {X}.|{X} begins next month in {P}.|Neighbors in {P} share opinions on {X}.|The {P} paper covers {X}.|Local businesses in {P} watch {X}.|{X} draws mixed reactions in {P}.|A community meeting in {P} focuses on {X}.|{X} update posted by {P} officials.|Volunteers in {P} prepare for {X}.',
+'Users in {P} report {X}.|{X} dominates tech talk in {P}.|Tech workers in {P} react to {X}.|{P} startups weigh in on {X}.|Analysts in {P} comment on {X}.|{X} trends online in {P}.|Schools in {P} discuss {X}.|A {P} library hosts a talk on {X}.|Commentators in {P} debate {X}.|{X} is the talk of {P}.',
+'Doctors in {P} comment on {X}.|{X} reported in {P}.|Clinics in {P} respond to {X}.|{P} health officials discuss {X}.|Residents in {P} ask questions about {X}.|{X} is covered by {P} radio.|Pharmacists in {P} weigh in on {X}.|Gyms in {P} notice {X}.|Schools in {P} share advice about {X}.|Community groups in {P} talk about {X}.',
+'{X} spreads across {P}.|Diners in {P} react to {X}.|Chefs in {P} weigh in on {X}.|{X} is trending in {P}.|{P} locals share thoughts on {X}.|Markets in {P} notice {X}.|Restaurants in {P} respond to {X}.|{X} reaches {P} kitchens.|Food bloggers in {P} cover {X}.|{X} has {P} talking.',
+'{X} reported in {P}.|Travelers in {P} react to {X}.|The {P} airport reports {X}.|Tourism boards in {P} discuss {X}.|Commuters in {P} weigh in on {X}.|{X} affects plans in {P}.|{P} travel agents comment on {X}.|Visitors to {P} notice {X}.|{X} is front page news in {P}.|{P} locals talk about {X}.'
+].map(function(s){return s.split('|')});
+var NX=['record heat|heavy rain|an early frost|dense fog','a surprise upset|a record-breaking win|a dramatic comeback|a last-minute goal','rising prices|falling gas prices|a surge in hiring|a dip in housing sales','a new telescope image|a breakthrough battery design|a rare fossil find|a promising vaccine trial','a surprise album drop|a blockbuster opening weekend|a new streaming hit|a sold-out tour','a new bridge project|a library renovation|a street festival|a road closure','a software outage|a new phone launch|a robotics demo|a data privacy debate','a flu season warning|a new fitness trend|a hospital expansion|a blood drive','a viral recipe|a new bakery opening|a farmers market boom|a coffee shortage','a new rail line|a tourism boom|an airline strike|a cheap flights sale'].map(function(s){return s.split('|')});
+var NP='Austin|Portland|Denver|Boston|Atlanta|Chicago|Seattle|Miami|Phoenix|Nashville|Detroit|Cleveland|Dallas|Houston|San Diego|Honolulu|Anchorage|Minneapolis|Pittsburgh|Charlotte|Toronto|Vancouver|London|Paris|Berlin|Madrid|Rome|Tokyo|Seoul|Sydney|Mumbai|Lagos|Nairobi|Cairo|Lima|Bogota|Mexico City|Havana|Reykjavik|Oslo|Dublin|Lisbon|Athens|Istanbul|Singapore|Bangkok|Manila|Auckland|Cape Town|Buenos Aires'.split('|');
+var NE=[['happy',1],['happy',1],['money',40],['smarts',1],['happy',1],null,null,['health',1],['happy',1],['happy',1]];
+function newsTick(){
+  G.news=G.news||[];
+  if(!chance(.7))return;var n=chance(.3)?2:1;
+  for(var i=0;i<n;i++){
+    var ci=rnd(0,9),t=NT[ci][rnd(0,9)].replace('{X}',NX[ci][rnd(0,3)]).replace('{P}',NP[rnd(0,49)]);
+    t=t.charAt(0).toUpperCase()+t.slice(1);
+    // about 1 in 10 headlines nudges a stat a tiny bit
+    if(chance(.1)&&NE[ci]){var e=NE[ci],sg=(ci===0||ci===2||ci===7)&&chance(.5)?-1:1,f={};f[e[0]]=sg*e[1];apply(f);t+=' ('+(sg>0?'+':'-')+(e[0]==='money'?'$':'')+e[1]+(e[0]==='money'?'':' '+e[0])+')'}
+    G.news.unshift({a:G.age,m:G.month,t:t});
+  }
+  G.news=G.news.slice(0,120);G.unread=(G.unread||0)+n;
+}
+function newsPage(){
+  if(!G||busy())return;
+  G.unread=0;render();
+  var h='<h2>News feed</h2><p style="margin-bottom:8px;color:var(--mute)">Headlines from around the world. Mostly just background noise.</p>';
+  (G.news||[]).slice(0,50).forEach(function(x){h+='<p class="ln"><small style="color:var(--mute)">Age '+x.a+' \u00b7 '+MO[x.m]+'</small><br>'+x.t+'</p>'});
+  if(!(G.news||[]).length)h+='<p>No news yet. Age up and check back.</p>';
+  $('sheet').innerHTML=h;
+  var b=document.createElement('button');b.className='btn';b.style.width='100%';b.textContent='Close';
+  b.onclick=function(){$('modal').classList.remove('on')};
+  $('sheet').appendChild(b);$('modal').classList.add('on');
+}
+/* ---------- school funding, parents' wealth, age-based activities ---------- */
+function parentAlive(){return G.people.some(function(p){return!p.dead&&(p.t==='Mother'||p.t==='Father')})}
+function pnw(){if(G.pnw==null)G.pnw=Math.round(Math.pow(10,3.5+Math.random()*3)/1000)*1000;return G.pnw}
+function allowMult(){var p=pnw();return p<20000?.5:p>500000?1.6:1}
+function fundMenu(done){
+  var c=G.college;if(!c){if(done)done();return}
+  var cov=c.cov||0,rem=Math.round(c.cost*(1-cov)),now=G.age*12+G.month;
+  if(cov>=1){c.pay='fed';return result('Your tuition is fully covered. You pay nothing.',{},done)}
+  var par=G.people.some(function(p){return!p.dead&&(p.t==='Mother'||p.t==='Father')});
+  var back=function(){fundMenu(done)};
+  ask('Paying for school','Tuition at '+c.n+' is '+fmt(c.cost)+'/yr for '+c.years+' years. Covered so far: '+Math.round(cov*100)+'%. You still owe '+fmt(rem)+'/yr.',[
+    {l:'Pay cash',s:'Paid monthly from your bank balance. Needs '+fmt(rem)+' now.',dis:G.money<rem,go:function(){c.pay='cash';result('You will pay '+fmt(rem)+' a year from your own money.',{},done)}},
+    {l:'Ask your parents to pay',s:'Family net worth: about '+fmt(pnw()),dis:!par||c.pT,go:function(){askSchool(back)}},
+    {l:'Apply for a scholarship',s:'Based on grades, smarts, and skills',dis:c.sT,go:function(){scholar(back)}},
+    {l:'Request a bank loan',s:'Needs bank approval. Adds to your debt.',dis:(G.bankCool||0)>now,go:function(){
+      if(chance(bankP(rem*c.years))){c.pay='loan';result('The bank approved your student loan.',{},done)}
+      else{G.bankCool=now+6;result('The bank denied your loan. You can reapply in 6 months.',{happy:-3},back)}}},
+    {l:'Federal student loans',s:'No approval needed. Adds to your debt.',go:function(){c.pay='fed';result('You took federal student loans.',{},done)}}
+  ]);
+}
+function askSchool(back){
+  var c=G.college;c.pT=1;
+  var par=G.people.filter(function(p){return!p.dead&&(p.t==='Mother'||p.t==='Father')}),b=Math.max.apply(null,par.map(function(p){return p.b})),P=pnw();
+  if(!chance(.35+b/150))return result('Your parents said they would rather you handle it yourself.',{happy:-3},back);
+  var f=P>=c.cost*8?1:P>=c.cost*3?.5:P>=c.cost*1.2?.25:0;
+  if(!f)return result('Your parents wish they could help, but they cannot afford it.',{happy:-2},back);
+  f=Math.min(f,1-(c.cov||0));c.cov=(c.cov||0)+f;G.pnw=Math.max(0,P-Math.round(f*c.cost*c.years));
+  result('Your parents agreed to cover '+Math.round(f*100)+'% of your tuition.',{happy:6},back);
+}
+function scholar(back){
+  var c=G.college;c.sT=1;
+  var best=0;SK.forEach(function(s){if(s[1]!=='Other')best=Math.max(best,lv(s[0]))});
+  var sc=G.gpa*15+G.smarts*.4+best/10+(T('Bookish')?3:0),pf=Math.max(0,Math.min(.4,(sc-85)/60)),ph=Math.max(0,Math.min(.6,(sc-65)/50)),r=Math.random(),f=0;
+  if(r<pf)f=1;else if(r<pf+ph)f=.5;else if(r<pf+ph+.2)f=.2;
+  if(!f)return result('You did not win a scholarship.',{happy:-3},back);
+  f=Math.min(f,1-(c.cov||0));c.cov=(c.cov||0)+f;
+  result(f>=1?'You won a full scholarship!':'You won a scholarship covering '+Math.round(f*100)+'% of tuition.',{happy:8},back);
+}
+function AC(l,s,fx,r,fr){return{l:l,s:s,fx:fx,r:r,friend:fr}}
+function actList(){
+  var a=G.age;
+  if(a<3)return[AC('Cuddle with your parents','+3 happiness',{happy:3},'You cuddled up with your parents.'),AC('Tummy time','+3 health',{health:3},'You had some active play time.'),AC('Play with toys','+2 smarts',{smarts:2},'You played with colorful toys.'),AC('Listen to lullabies','+3 happiness',{happy:3},'Soft music calmed you down.')];
+  if(a<6)return[AC('Play with toys','+3 happiness',{happy:3},'You played with your toys.'),AC('Color and draw','+3 smarts',{smarts:3},'You made a colorful drawing.'),AC('Play outside','+3 health',{health:3},'You ran around outside.'),AC('Story time','+3 smarts',{smarts:3},'You listened to a story.'),AC('Play with other kids','+4 happiness, may meet a friend',{happy:4},'You played with other kids.',1)];
+  if(a<13)return[AC('Play outside','+3 health',{health:3},'You played outside.'),AC('Do homework','+3 smarts',{smarts:3},'You got your homework done.'),AC('Play with friends','+4 happiness, may meet a friend',{happy:4},'You played with friends.',1),AC('Read a book','+3 smarts',{smarts:3},'You read a good book.'),AC('Play video games','+4 happiness',{happy:4},'You played video games.'),AC('Ride your bike','+3 health, +1 happiness',{health:3,happy:1},'You went for a bike ride.')];
+  if(a<18)return[AC('Go to the gym','+4 health, +1 looks',{health:4,looks:1},'You worked out.'),AC('Study','+3 smarts',{smarts:3},'You hit the books.'),AC('Hang out with friends','+4 happiness, may meet a friend',{happy:4},'You hung out with friends.',1),AC('Play sports','+3 health, +1 happiness',{health:3,happy:1},'You played a pickup game.'),AC('Volunteer','+2 smarts, +2 happiness',{smarts:2,happy:2},'You volunteered in your community.'),AC('Play video games','+4 happiness',{happy:4},'You played video games.'),AC('Read a book','+3 smarts',{smarts:3},'You read a good book.')];
+  return[AC('Go to the gym','+4 health, +1 looks',{health:4,looks:1},'You worked out.'),AC('Study','+3 smarts',{smarts:3},'You hit the books.'),AC('Socialize','+4 happiness, may meet a friend',{happy:4},'You hung out with people.',1),AC('Go for a hike','+3 health, +2 happiness',{health:3,happy:2},'You hiked a scenic trail.'),AC('Meditate','+3 happiness',{happy:3},'You spent time meditating.'),AC('Read a book','+3 smarts',{smarts:3},'You read a good book.'),AC('Cook a nice meal','+2 happiness, +1 health',{happy:2,health:1},'You cooked a lovely meal.'),AC('Volunteer','+2 happiness, +1 smarts',{happy:2,smarts:1},'You volunteered for a cause.'),AC('Go to a concert','+4 happiness',{happy:4},'You went to a live show.')];
+}
+/* ---------- a decision every age-up: 100 situations x 5 stakes x 10 styles x 4 contexts = 20,000 ---------- */
+var NDK=[
+['smarts','happy',`a pop quiz|a science project|a reading challenge|a math contest|a school presentation|a field trip assignment|extra credit work|a group project|a spelling test|a library book`],
+['happy','health',`a friend wanting to play|a birthday invitation|a new kid at school|a playground argument|a game night|a school dance|a talent show|a sleepover|a class party|a secret someone shared`],
+['health','happy',`a soccer game|a swimming lesson|a long bike ride|a field day race|a hiking trip|a gym class challenge|a jump rope contest|a snowball fight|a skateboard trick|a dodgeball match`],
+['looks','happy',`a school photo day|a haircut choice|a costume contest|a fashion trend|a dance outfit|a talent audition|a yearbook photo|a new glasses frame|a spring recital|a makeover offer`]
+];
+var NDA=[
+['money','happy',`a freelance side gig|a rental opportunity|a garage sale haul|a market tip|a coworker's investment pitch|a cashback scheme|a flea market find|a resale flip|an overtime shift|a bulk-buy deal`],
+['smarts','happy',`a night class|a book club pick|a mentorship offer|a language exchange|a research article|a puzzle challenge|a certification exam|a documentary night|a coding challenge|a museum membership`],
+['happy','health',`a weekend trip|a neighbor's barbecue|a friend's wedding|a reunion invite|a concert ticket|a family gathering|a dance class|a game night invite|a holiday plan|a surprise visit`],
+['health','happy',`a new running route|a doctor's advice|a sleep schedule|a cooking class|a gym membership|a hiking club|a stress-reduction retreat|a swimming challenge|a yoga streak|a diet tip`],
+['looks','happy',`a new wardrobe|a haircut change|a skincare routine|a photo shoot|a dentist's offer|a fitness makeover|a formal event|a styling tip|a glasses upgrade|a bold new style`],
+['smarts','happy',`a work conflict|a team project|a client request|a promotion rumor|a coworker's favor|a manager's feedback|a deadline crunch|a networking mixer|a training offer|a remote-work proposal`]
+];
+var CXK=['At school,','At home,','At the park,','On a weekend,'],CXA=['At work,','At home,','Out of the blue,','Over the weekend,'];
+function bondTo(d){var ps=G.people.filter(function(p){return!p.dead});if(!ps.length)return'';var p=pick(ps);p.b=Math.max(0,Math.min(100,p.b+d));return' '+p.n.split(' ')[0]+(d>0?' appreciated it.':' was upset.')}
+function newDec(done){
+  var kid=G.age<18,w=[1,.29,.14,.08,.056],r=Math.random()*1.566,t=0;
+  while(t<4&&r>w[t]){r-=w[t];t++}
+  var d=pick(kid?NDK:NDA),g=d[0],k=d[1],c=pick(d[2].split('|')),cx=pick(kid?CXK:CXA),st=rnd(0,9);
+  var amt=function(s,m){return Math.max(1,Math.round((s==='money'?(kid?MMK:MM)[t]:(kid?AMK:AM)[t])*m))};
+  var F=function(s,m,sg){var f={};f[s]=sg*amt(s,m);return f};
+  var S=function(ok){return chance(.12+.08*t)?sit(ok):''};
+  var go=function(txt,fx){result(txt,fx,done)};
+  var p=Math.max(.2,Math.min(.85,.5+(G.smarts-50)/400+(T('Lucky')?.08:0)));
+  var O=[
+   [['Take the chance','You could gain or lose a lot',function(){if(chance(p))go('The gamble worked out.'+S(1),F(g,1.5,1));else go('It did not go your way.'+S(0),F(g,1.1,-1))}],['Stay cautious','Small but sure',function(){go('You stayed cautious.',F(g,.2,1))}]],
+   [['Give it your all','Costs effort, usually pays off',function(){var f=F(k,.5,-1);if(chance(.8)){f[g]=(f[g]||0)+amt(g,1.2);go('Your effort paid off.'+S(1),f)}else go('Your effort did not pay off.'+S(0),f)}],['Take it easy','Low effort',function(){go('You took it easy.',{happy:1})}]],
+   [['Lend a hand','Costs you a little, builds bonds',function(){var f=F(k,.4,-1);f.happy=(f.happy||0)+amt('happy',.6);go('You helped out.'+bondTo(3*(t+1))+S(1),f)}],['Mind your own business','No cost',function(){go('You minded your own business.'+(chance(.3)?bondTo(-3):''),{happy:-1})}]],
+   [['Do it by the book','Safe and honest',function(){go('You did it the right way.',F(g,.4,1))}],['Cut a corner','Bigger reward, some risk',function(){if(chance(.6))go('Nobody noticed, and it paid off.',F(g,1.6,1));else{var rec=!kid&&t>=3;if(rec)G.record=(G.record||0)+1;go('You got caught cutting corners.'+(rec?' It went on your record.':''),F(g,1.2,-1))}}]],
+   [['Treat yourself','Costs something, lifts your mood',function(){var f=kid?F(k,.4,-1):F('money',.3,-1);f.happy=(f.happy||0)+amt('happy',1);go('You treated yourself.',f)}],['Save for later','A small sure gain',function(){go('You saved for later.',kid?F(g,.2,1):F('money',.15,1))}]],
+   [['Speak up','Depends on your charm and smarts',function(){if(chance(Math.max(.2,Math.min(.85,.45+G.smarts/300+G.looks/500+(T('Charming')?.1:0)))))go('Speaking up worked.'+bondTo(3)+S(1),F(g,1.2,1));else go('Speaking up backfired.'+bondTo(-4)+S(0),F(k,.8,-1))}],['Keep quiet','Avoid the drama',function(){go('You kept quiet.',{happy:-1})}]],
+   [['Ask someone you trust','Usually helps',function(){if(chance(.75))go('Their advice was spot on.'+bondTo(2*(t+1)),F(g,1,1));else go('Their advice did not help much.',F(k,.4,-1))}],['Figure it out alone','Higher variance',function(){if(chance(.5))go('You figured it out yourself.'+S(1),F(g,1.6,1));else go('Going solo did not work out.'+S(0),F(g,1,-1))}]],
+   [['Accept the offer','A gain, with a trade-off',function(){var f=F(k,.6,-1);f[g]=(f[g]||0)+amt(g,1.2);go('You accepted, and it brought change.'+S(1),f)}],['Decline politely','Keeps things as they are',function(){go('You declined politely.',F(k,.2,1))}]],
+   [['Share it with others','Warms your relationships',function(){go('You shared it.'+bondTo(3*(t+1)),F('happy',.8,1))}],['Keep it to yourself','Your gain, a little lonely',function(){var f=F(g,1,1);f.happy=(f.happy||0)-1;go('You kept it for yourself.',f)}]],
+   [['Act right away','Move fast',function(){if(chance(.55))go('Acting fast paid off.'+S(1),F(g,1.3,1));else go('Acting fast was a mistake.'+S(0),F(g,.9,-1))}],['Wait and see','Let things play out',function(){var q=Math.random();if(q<.3)go('It worked out on its own.',F(g,.6,1));else if(q<.6)go('Nothing much happened.',{});else go('It got worse while you waited.',F(g,.4,-1))}]]
+  ][st];
+  ask('Decision',cx+' you face a '+SZ[t]+' decision about '+c+'.',O.map(function(o){return{l:o[0],s:o[1],go:o[2]}}));
+}
+/* ---------- investments, business, pets, social, travel, memberships, school life ---------- */
+var AS={Index:[.006,.04],Tech:[.008,.085],Bonds:[.003,.01],Crypto:[.01,.18]};
+function portVal(){var s=0;for(var k in(G&&G.port||{}))s+=G.port[k];return s}
+function portMonth(){
+  if(!G.port)return;
+  var cr=chance(.004)?-.25:0;if(cr)say('The stock market crashed.');
+  for(var k in G.port){var a=AS[k],r=a[0]+(Math.random()+Math.random()+Math.random()-1.5)*a[1]*1.6+(k==='Bonds'?0:cr);G.port[k]=Math.max(0,G.port[k]*(1+r))}
+}
+function investPage(){
+  G.port=G.port||{};
+  var L=Object.keys(AS).map(function(k){return{l:k+' \u00b7 '+fmt(G.port[k]||0),s:'About '+(AS[k][0]*100).toFixed(1)+'%/month, risk '+(AS[k][1]>.1?'very high':AS[k][1]>.05?'high':AS[k][1]>.02?'medium':'low'),go:function(){assetMenu(k)}}});
+  L.push({l:'Close',go:function(){$('modal').classList.remove('on')}});
+  ask('Investments','Total invested: '+fmt(portVal())+'. Returns are random and a crash can hit.',L);
+}
+function assetMenu(k){
+  var v=Math.round(G.port[k]||0);
+  var L=[1000,10000,100000].map(function(a){return{l:'Buy '+fmt(a),dis:G.money<a,go:function(){G.money-=a;G.port[k]=(G.port[k]||0)+a;result('You invested '+fmt(a)+' in '+k.toLowerCase()+'.',{})}}});
+  L.push({l:'Sell half',s:fmt(v/2),dis:v<2,go:function(){G.port[k]-=v/2;G.money+=v/2;result('You sold '+fmt(v/2)+' of '+k.toLowerCase()+'.',{})}},{l:'Sell all',s:fmt(v),dis:v<1,go:function(){G.money+=G.port[k];G.port[k]=0;result('You sold all your '+k.toLowerCase()+'.',{})}},{l:'Back',go:function(){$('modal').classList.remove('on');investPage()}});
+  ask(k,'You hold '+fmt(v)+'.',L);
+}
+var BZ=['Coffee shop','App startup','Food truck','Landscaping crew','Online store','Dog grooming'];
+function bizVal(){return G&&G.biz?G.biz.lv*8000:0}
+function bizMonth(){
+  var b=G.biz;if(!b)return;
+  var p=Math.round((Math.random()-.35)*b.lv*1500);
+  if(chance(.01)){p-=b.lv*3000;say('A setback hit your '+b.n.toLowerCase()+'.')}
+  if(p>=0)G.money+=p;else spend(-p);
+  b.cf=(b.cf||0)+p;
+  if(b.cf<-b.lv*20000){say('Your '+b.n.toLowerCase()+' went bankrupt.');G.biz=null;G.happy=clamp(G.happy-12)}
+}
+function bizPage(){
+  var b=G.biz,L;
+  if(!b){
+    L=BZ.map(function(n){return{l:n,s:'$10,000 to start. Cash only.',dis:G.money<10000,go:function(){G.money-=10000;G.biz={n:n,lv:1,cf:0};result('You opened your '+n.toLowerCase()+'.',{happy:5})}}});
+    L.push({l:'Close',go:function(){$('modal').classList.remove('on')}});
+    return ask('Start a business','Profits are random and a business can go bankrupt.',L);
+  }
+  var ex=6000*b.lv;
+  L=[{l:'Expand',s:fmt(ex)+' for a higher level',dis:G.money<ex,go:function(){G.money-=ex;b.lv++;result('You expanded your '+b.n.toLowerCase()+'.',{happy:3})}},
+     {l:'Sell the business',s:'Worth about '+fmt(bizVal()),go:function(){var v=Math.round(bizVal()*(.7+Math.random()*.5));G.money+=v;G.biz=null;result('You sold your '+b.n.toLowerCase()+' for '+fmt(v)+'.',{happy:2})}},
+     {l:'Close it down',go:function(){G.biz=null;result('You closed your '+b.n.toLowerCase()+'.',{happy:-5})}},
+     {l:'Close menu',go:function(){$('modal').classList.remove('on')}}];
+  ask(b.n,'Level '+b.lv+' \u00b7 value about '+fmt(bizVal())+' \u00b7 total profit '+fmt(b.cf||0),L);
+}
+var PT=[['Dog',300,40,.6],['Cat',150,25,.5],['Parrot',400,30,.4],['Goldfish',30,5,.2],['Rabbit',100,20,.4]];
+function petPage(){
+  var L=PT.map(function(p,i){return{l:p[0],s:fmt(p[1])+' to adopt \u00b7 '+fmt(p[2])+'/mo',go:function(){var n=pick(FN);(G.pets=G.pets||[]).push({n:n,i:i,age:0});result('You adopted '+n+' the '+p[0].toLowerCase()+'.',{money:-p[1],happy:6})}}});
+  L.push({l:'Close',go:function(){$('modal').classList.remove('on')}});
+  ask('Adopt a pet','Pets lift your mood but cost money for food and vet bills.',L);
+}
+function wedding(p){
+  var W=[['Courthouse wedding',200,6,2],['Small ceremony',5000,10,6],['Big wedding',25000,15,10],['Dream wedding',80000,22,14]];
+  ask('Plan the wedding',p.n+' said yes! How do you celebrate?',W.map(function(w){return{l:w[0],s:fmt(w[1]),dis:w[1]>200&&G.money<w[1],go:function(){p.b=Math.min(100,p.b+w[3]);result('You had a '+w[0].toLowerCase()+'.',{money:-w[1],happy:w[2]})}}}));
+}
+function dating(){
+  if(chance(Math.min(.8,.3+G.looks/250+(T('Charming')?.15:0)))){var p=person('Partner',null,40);G.people.push(p);result('You matched with '+p.n+' and started dating.',{happy:6})}
+  else result('You swiped for hours but got ghosted.',{happy:-2});
+}
+function postSocial(){
+  var g=Math.round(rnd(10,200)*(1+G.looks/100)),tx='You posted online and gained '+g+' followers.',f={happy:1};
+  if(chance(.04)){g*=50;tx='Your post went viral! You gained '+g+' followers.';f.happy=8}
+  else if(chance(.03)){g=-Math.round((G.fol||0)*.2);tx='Your post got backlash and you lost followers.';f.happy=-6}
+  G.fol=Math.max(0,(G.fol||0)+g);result(tx,f);
+}
+function rivalMenu(p){
+  ask(p.n,'Rival \u00b7 Bond '+Math.round(p.b)+'%',[
+    {l:'Make peace',s:'Chance depends on your smarts',go:function(){if(chance(.35+G.smarts/300)){p.t='Friend';p.b=45;result('You made peace with '+p.n+'. You are friends now.',{happy:5})}else{p.b=Math.max(0,p.b-5);result(p.n+' was not ready to make peace.',{happy:-2})}}},
+    {l:'Retaliate',s:'Risky',go:function(){if(chance(.5))result('You got even with '+p.n+'.',{happy:4});else{if(chance(.15))G.record=(G.record||0)+1;result('Retaliating backfired.',{happy:-5})}}},
+    {l:'Ignore them',go:function(){$('modal').classList.remove('on')}},
+    {l:'Back',go:function(){$('modal').classList.remove('on');people()}}]);
+}
+var TRV=[['Beach weekend',600,6,0],['City break',1500,8,2],['Ski trip',2500,10,0],['Europe tour',5000,14,4],['African safari',8000,16,3],['World cruise',20000,22,5]];
+function travelPage(){
+  var L=TRV.map(function(t){return{l:t[0],s:fmt(t[1]),dis:G.money<t[1]||!(G.ap>0),go:function(){
+    G.ap--;G.trips=(G.trips||0)+1;var f={money:-t[1],happy:t[2],smarts:t[3]},tx='You enjoyed a '+t[0].toLowerCase()+'.';
+    if(chance(.12)){f.health=-4;tx+=' You got sick on the trip.'}
+    result(tx,f)}}});
+  L.push({l:'Never mind',go:function(){$('modal').classList.remove('on')}});
+  ask('Travel','Pick a trip. Cash only, and it uses one activity.',L);
+}
+var GYM=[['No membership',0,0,0],['Basic gym',30,.3,0],['Premium gym',90,.6,.1],['Personal trainer',300,1,.2]];
+var FSH=[['Off the rack',0,0,0],['Thrift finds',40,.1,0],['Mid-range wardrobe',150,.3,0],['Designer wardrobe',600,.6,.2]];
+function membPage(){
+  var L=[];
+  GYM.forEach(function(g,i){L.push({l:'Gym: '+g[0]+((G.gym||0)===i?' (current)':''),s:g[1]?fmt(g[1])+'/mo':'Free',go:function(){G.gym=i;result('You switched to the '+g[0].toLowerCase()+' plan.',{})}})});
+  FSH.forEach(function(f,i){L.push({l:'Wardrobe: '+f[0]+((G.fsh||0)===i?' (current)':''),s:f[1]?fmt(f[1])+'/mo':'Free',go:function(){G.fsh=i;result('You switched to '+f[0].toLowerCase()+'.',{})}})});
+  L.push({l:'Close',go:function(){$('modal').classList.remove('on')}});
+  ask('Memberships','Monthly plans change your stats. Parents pay before 18.',L);
+}
+var CLUBS=[['Chess club',{smarts:.3}],['Debate team',{smarts:.2,looks:.1}],['Drama club',{happy:.2,looks:.2}],['Band',{happy:.3}],['Robotics club',{smarts:.3}],['Student council',{happy:.1,smarts:.1}]];
+function schoolPage(){
+  var L=CLUBS.map(function(c,i){return{l:c[0]+(G.club===i?' (joined)':''),s:'Club',go:function(){G.club=i;result('You joined the '+c[0].toLowerCase()+'.',{})}}});
+  SK.filter(function(s){return s[1]==='Sport'}).forEach(function(s){L.push({l:s[0]+' team'+(G.team===s[0]?' (joined)':''),s:'Season runs Sep to Dec',go:function(){G.team=s[0];result('You joined the '+s[0].toLowerCase()+' team.',{})}})});
+  if(G.club!=null)L.push({l:'Quit your club',go:function(){G.club=null;result('You quit your club.',{})}});
+  L.push({l:'Close',go:function(){$('modal').classList.remove('on')}});
+  ask('School clubs and teams','Clubs help your stats during the school year. Teams train you from Sep to Dec.',L);
+}
+function prom(done){
+  G['pr'+G.age]=1;
+  var pt=G.people.filter(function(p){return!p.dead&&(p.t==='Partner'||p.t==='Spouse')})[0];
+  ask('Prom night','Prom is this month. How do you spend it?',[
+    {l:'Go with your partner',s:'$150',dis:!pt,go:function(){pt.b=Math.min(100,pt.b+10);result('You had a magical prom with '+pt.n.split(' ')[0]+'.',{money:-150,happy:12,looks:1},done)}},
+    {l:'Go with friends',s:'$80',go:function(){result('You danced all night with your friends.',{money:-80,happy:8},done)}},
+    {l:'Skip prom',go:function(){result('You skipped prom.',{happy:-2},done)}}]);
+}
+function extraMonth(){
+  var a=G.age,m=G.month;
+  portMonth();bizMonth();
+  (G.pets||[]).slice().forEach(function(p){p.age++;G.happy=clamp(G.happy+PT[p.i][3]);spend(PT[p.i][2]);if(p.age>96&&chance(.012)){G.pets.splice(G.pets.indexOf(p),1);G.happy=clamp(G.happy-8);say(p.n+' the '+PT[p.i][0].toLowerCase()+' passed away.')}});
+  var gm=GYM[G.gym||0],fs=FSH[G.fsh||0];
+  if(a>=18)spend(gm[1]+fs[1]);
+  G.health=clamp(G.health+gm[2]);G.looks=clamp(G.looks+gm[3]+fs[2]);G.happy=clamp(G.happy+fs[3]);
+  if((G.fol||0)>=10000)G.money+=Math.round(G.fol*.01);
+  var school=m!==5&&m!==6&&m!==7;
+  if(G.club!=null&&a>=11&&a<=18&&school){var c=CLUBS[G.club][1];for(var s in c)G[s]=clamp(G[s]+c[s])}
+  if(G.team&&m>=8&&m<=11){G.health=clamp(G.health+.3);G.happy=clamp(G.happy+.2);G.skills=G.skills||{};G.skills[G.team]=Math.min(100,(G.skills[G.team]||0)+1);
+    if(m===11){if(chance(.25)){G.happy=clamp(G.happy+8);say('Your '+G.team.toLowerCase()+' team won the championship!')}else say('The '+G.team.toLowerCase()+' season ended.');G.team=null}}
+  var rv=G.people.filter(function(p){return!p.dead&&p.t==='Rival'});
+  rv.forEach(function(p){if(chance(.03)){G.happy=clamp(G.happy-3);say(p.n+' spread a rumor about you.')}});
+  if(a>=10&&rv.length<2&&chance(.008)){var r=person('Rival',null,15);G.people.push(r);say('You made an enemy: '+r.n+'.')}
+}
+/* ---------- choose how much debt to pay ---------- */
+function payDebt(a){
+  a=Math.min(Math.floor(a),Math.ceil(G.debt||0),Math.floor(G.money));
+  if(a<1)return result('You have nothing to pay with right now.',{});
+  G.money-=a;G.debt=Math.max(0,G.debt-a);if(G.debt<1)G.debt=0;
+  result('You paid '+fmt(a)+' toward your debt.'+(G.debt>0?' You still owe '+fmt(G.debt)+'.':' You are debt free!'),{});
+}
+function payDebtPage(){
+  var d=Math.ceil(G.debt||0),m=Math.floor(G.money);
+  if(d<1)return;
+  var L=[100,1000,5000,10000].filter(function(a){return a<d}).map(function(a){return{l:'Pay '+fmt(a),dis:m<a,go:function(){payDebt(a)}}});
+  L.push({l:'Pay half ('+fmt(d/2)+')',dis:m<d/2,go:function(){payDebt(d/2)}},{l:'Pay it all ('+fmt(d)+')',dis:m<d,go:function(){payDebt(d)}},{l:'Pay everything I can ('+fmt(Math.min(m,d))+')',dis:m<1,go:function(){payDebt(Math.min(m,d))}});
+  ask('Pay down debt','You owe '+fmt(d)+' and have '+fmt(m)+' in the bank. Pick an amount or type your own.',L);
+  var inp=document.createElement('input');inp.type='number';inp.inputMode='numeric';inp.placeholder='Custom amount';
+  inp.style.cssText='width:100%;font:inherit;font-size:17px;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);margin-top:12px;user-select:text;-webkit-user-select:text';
+  var note=document.createElement('p');note.style.cssText='margin:6px 0 0;color:var(--warn);font-size:14px';
+  var go=document.createElement('button');go.className='btn';go.style.cssText='width:100%;margin-top:8px';go.textContent='Pay custom amount';
+  go.onclick=function(){
+    var v=Math.floor(+inp.value||0);
+    if(v<1){note.textContent='Enter an amount of at least $1.';return}
+    if(v>m){note.textContent='You only have '+fmt(m)+' in the bank.';return}
+    payDebt(Math.min(v,d));
+  };
+  var cl=document.createElement('button');cl.className='opt';cl.style.textAlign='center';cl.textContent='Cancel';cl.onclick=function(){$('modal').classList.remove('on')};
+  $('sheet').appendChild(inp);$('sheet').appendChild(note);$('sheet').appendChild(go);$('sheet').appendChild(cl);
+}
+/* ---------- tutorial, settings, privacy ---------- */
+var tutSeen=false;
+function tutorial(next){
+  tutSeen=true;
+  $('sheet').innerHTML='<h2>How to play</h2><p><b>Age up</b> moves time forward 6 months. Events and decisions pop up as you go.</p><p><b>Activities</b> gives you 3 actions per turn: exercise, study, find a job, travel, invest, visit the bank, and more.</p><p><b>People</b> lets you spend time with family and friends. Bonds fade if you ignore them.</p><p><b>Skills, Items and News</b> track your abilities, belongings, and the headlines.</p><p>Keep your health and happiness up and manage your money. Borrowing needs bank approval, and every choice shapes your life.</p>';
+  var b=document.createElement('button');b.className='btn';b.style.width='100%';b.textContent='Got it';
+  b.onclick=function(){try{localStorage.setItem('ll_tut','1')}catch(e){}$('modal').classList.remove('on');next()};
+  $('sheet').appendChild(b);$('modal').classList.add('on');
+}
+function policyPage(){
+  $('sheet').innerHTML='<h2>Privacy policy</h2><p>Lifelines saves your game on your device only. There are no accounts, and we do not collect your name or contact details.</p><p>Ads are provided by Google AdMob, which may use your device advertising ID, IP address, and usage data to show ads. Players in the EEA and UK are asked for consent first.</p><p>Lifelines is not directed to children under 13. To delete your data, use Reset in Settings or uninstall the app.</p>';
+  var b=document.createElement('button');b.className='btn';b.style.width='100%';b.textContent='Back';
+  b.onclick=function(){$('modal').classList.remove('on');settingsPage()};
+  $('sheet').appendChild(b);$('modal').classList.add('on');
+}
+function settingsPage(){
+  if(busy())return;
+  ask('Settings','Lifelines',[
+    {l:'How to play',go:function(){tutorial(function(){})}},
+    {l:'Privacy policy',go:policyPage},
+    {l:'Reset all saved data',s:'Deletes your life, achievements, and legacy',go:function(){
+      ask('Reset everything?','This permanently deletes your saved life, achievements, and legacy.',[
+        {l:'Yes, delete everything',go:function(){try{['ll_save','ll2_save','ll_best','ll_ach','ll_leg','ll_tut'].forEach(function(k){localStorage.removeItem(k)})}catch(e){}ACHV={};best=0;tutSeen=false;$('modal').classList.remove('on');newLife()}},
+        {l:'Cancel',go:function(){$('modal').classList.remove('on')}}])}},
+    {l:'Close',go:function(){$('modal').classList.remove('on')}}]);
+}
+/* ---------- achievements, legacy, life summary ---------- */
+var ACHV={};try{ACHV=JSON.parse(localStorage.getItem('ll_ach')||'{}')}catch(e){}
+function skMax(cat){var m=0;SK.forEach(function(s){if(s[1]===cat)m=Math.max(m,lv(s[0]))});return m}
+function nwth(){return G.money-(G.debt||0)+(G.homeVal||0)-(G.mort||0)+portVal()+bizVal()}
+var ACH=[
+['cent','Centenarian','Live to 100',function(){return G.age>=100}],
+['ivy','Ivy Leaguer','Get into an Ivy League school',function(){return!!G.ivy}],
+['md','Doctor','Finish medical school',function(){return G.ed==='md'}],
+['mil','Millionaire','Reach $1,000,000 net worth',function(){return nwth()>=1e6}],
+['home','Homeowner','Buy a house',function(){return!!G.house}],
+['par','Parent','Have a child',function(){return kids().length>0}],
+['gp','Grandparent','Become a grandparent',function(){return kids().some(function(k){return k.gk})}],
+['mae','Maestro','Reach 80 in any instrument',function(){return skMax('Music')>=80}],
+['ath','Athlete','Reach 80 in any sport',function(){return skMax('Sport')>=80}],
+['rec','Rap Sheet','Get a criminal record',function(){return(G.record||0)>0}],
+['col','Collector','Own 3 auction finds',function(){return(G.inv||[]).filter(function(i){return i.type==='auction'}).length>=3}],
+['sup','Fast Lane','Own a supercar',function(){return(G.inv||[]).some(function(i){return i.name==='Supercar'})}],
+['sch','Straight-A','Hold a 3.9+ GPA at 18 or older',function(){return G.age>=18&&G.gpa>=3.9}],
+['fri','Social Butterfly','Have 5 friends at once',function(){return G.people.filter(function(p){return!p.dead&&p.t==='Friend'}).length>=5}],
+['wed','Wedding Bells','Get married',function(){return G.people.some(function(p){return!p.dead&&p.t==='Spouse'})}],
+['ret','Golden Years','Retire',function(){return!!G.retired}],
+['bar','Bargain Hunter','Win an auction item worth double what you paid',function(){return(G.inv||[]).some(function(i){return i.type==='auction'&&i.val>=i.paid*2})}],
+['sec','Second Chance','Be revived after dying',function(){return!!G.revived}]
+];
+function checkAch(){
+  if(G.college&&G.college.tier==='ivy')G.ivy=1;
+  ACH.forEach(function(a){if(!ACHV[a[0]]&&a[3]()){ACHV[a[0]]=1;try{localStorage.setItem('ll_ach',JSON.stringify(ACHV))}catch(e){}say('Achievement unlocked: '+a[1]+'.')}});
+}
+function achPage(){
+  var L=ACH.map(function(a){return{l:a[1]+(ACHV[a[0]]?' (unlocked)':''),s:a[2],go:function(){}}});
+  L.push({l:'Close',go:function(){$('modal').classList.remove('on')}});
+  ask('Achievements','Achievements carry over between lives.',L);
+}
+function applyLegacy(){
+  var l=null;try{l=JSON.parse(localStorage.getItem('ll_leg')||'null');localStorage.removeItem('ll_leg')}catch(e){}
+  if(!l)return'';
+  var t='';if(l.m>0){G.money+=l.m;t='Your family left you '+fmt(l.m)+'.'}
+  if(l.t&&G.traits.indexOf(l.t)<0&&G.traits.length<3){G.traits.push(l.t);t+=' You inherited a trait: '+l.t.toLowerCase()+'.'}
+  return t;
+}
+function lifeSummary(cause){
+  var nw=Math.round(nwth()),sp=G.people.some(function(p){return p.t==='Spouse'});
+  var lines=['Lived to '+G.age+' ('+cause+')','Career: '+(G.job||(G.retired?'Retired':'None'))+(G.degree?' \u00b7 '+G.degree:''),'Net worth: '+fmt(nw),'Children: '+kids().length+(sp?' \u00b7 Married':''),'Achievements: '+Object.keys(ACHV).length+' of '+ACH.length,'Criminal record: '+(G.record||0)+' \u00b7 Best life so far: '+best+' years'];
+  var lg=Math.max(0,Math.min(250000,Math.round(nw*.15/1000)*1000)),tr=G.traits&&G.traits.length?pick(G.traits):'';
+  try{localStorage.setItem('ll_leg',JSON.stringify({m:lg,t:tr}))}catch(e){}
+  G.sum=G.name+' lived to '+G.age+' in Lifelines. Net worth '+fmt(nw)+', '+kids().length+' children, '+Object.keys(ACHV).length+' achievements.';
+  return'<h2>'+G.name+' has died</h2><p>'+lines.join('<br>')+'<br><br>Legacy for your next life: '+fmt(lg)+(tr?' and the '+tr.toLowerCase()+' trait':'')+'.</p>';
+}
+/* ---------- cars, houses, auction house, items ---------- */
+var CARS=[['Used hatchback',6000,100,3,0],['Reliable sedan',18000,150,5,0],['Family SUV',35000,220,6,0],['Sports car',60000,350,10,3],['Luxury sedan',90000,450,12,4],['Supercar',250000,1000,20,6]];
+var HOUSES=[['Studio condo',120000,200,4],['Starter home',250000,350,8],['Family house',400000,500,10],['Luxury villa',1000000,1500,16],['Mansion',3000000,4000,24]];
+var AUC=[['Antique clock',800,3000],['Vintage guitar',1200,6000],['Oil painting',2000,12000],['Rare coin set',500,4000],['Classic watch',3000,20000],['Signed jersey',600,3500],['Old comic collection',400,5000],['Designer handbag',900,5000],['Case of vintage wine',700,6000],['Antique vase',1000,8000],['Rare first-edition book',500,9000],['Jade statue',2000,15000],['Vintage movie poster',300,3000],['Mystery storage unit',200,4000],['Grand piano',2500,10000],['Diamond ring',1500,12000],['Vintage camera',250,2500],['Retro console collection',300,3500],['Bronze sculpture',1500,9000],['Persian rug',1000,7000],['Vintage motorcycle',3000,18000],['Gold bar',3000,6000],['Fossil specimen',700,6000],['Antique map',400,3000]];
+// +1,500 generated auction items: 60 styles x 25 kinds of object
+(function(){
+  var M='Victorian:1.3,Art Deco:1.5,Mid-century:1.2,Handmade:.9,Signed:1.6,Mint-condition:1.5,Rusty:.4,Cracked:.5,Antique:1.4,Vintage:1.1,Rare:1.8,Limited-edition:1.6,Hand-painted:1.2,Gilded:1.4,Silver-plated:1.1,Carved:1.1,Weathered:.6,Restored:1,Imported:.9,Museum-grade:2.2,Folk-art:.8,Gothic:1.2,Rustic:.7,Colonial:1.3,Edwardian:1.3,Baroque:1.6,Retro:.8,Space-age:1,Japanese:1.2,Italian:1.2,French:1.3,English:1.1,Swiss:1.4,German:1.1,Persian:1.4,Moroccan:1,Nordic:1,Chinese:1.3,Scottish:1,Spanish:1,Mexican:.9,Indian:1,Egyptian:1.3,Greek:1.2,Roman:1.4,Irish:.9,Dutch:1.1,Brazilian:.9,Turkish:1,Hand-stitched:.9,Hand-blown:1.1,Engraved:1.2,Lacquered:1,Enameled:1.1,Walnut:1,Oak:.9,Marble:1.2,Crystal:1.3,Damaged:.4,Faded:.5'.split(',');
+  var N='teapot:100:900,mirror:200:1500,lamp:150:1200,chest:300:2500,pocket watch:400:3500,cuckoo clock:250:2000,vase:150:1800,globe:200:1500,sword:500:4000,telescope:300:2500,typewriter:150:1200,music box:200:1800,chess set:150:2000,rocking chair:200:1600,trunk:150:1200,candlestick pair:100:900,tea set:250:2000,compass:100:1000,sextant:400:3000,quilt:150:1500,bookcase:300:2500,fountain pen:100:1500,mask:200:2200,samovar:200:1800,tapestry:300:3000'.split(',');
+  M.forEach(function(m){var a=m.split(':');N.forEach(function(n){var b=n.split(':');AUC.push([a[0]+' '+b[0],Math.round(b[1]*a[1]),Math.round(b[2]*a[1])])})});
+})();
+function carUp(){return(G.inv||[]).reduce(function(s,i){return s+(i.type==='car'?i.up||0:0)},0)}
+function carShop(){
+  var L=CARS.map(function(c){return{l:c[0],s:fmt(c[1])+' \u00b7 upkeep '+fmt(c[2])+'/mo \u00b7 '+(G.money>=c[1]?'pay cash':'bank loan'),go:function(){buyCar(c)}}});
+  L.push({l:'Close',go:function(){$('modal').classList.remove('on')}});
+  ask('Car dealership','Pay cash if you can. Otherwise the bank has to approve a loan.',L);
+}
+function buyCar(c){
+  var cash=G.money>=c[1];
+  if(!cash&&!chance(bankP(c[1])))return result('The bank declined your car loan.',{happy:-2});
+  if(cash)G.money-=c[1];else G.debt=(G.debt||0)+c[1];
+  (G.inv=G.inv||[]).push({type:'car',name:c[0],paid:c[1],val:c[1],up:c[2]});
+  result('You bought a '+c[0].toLowerCase()+(cash?' with cash.':' with a bank loan.'),{happy:c[3],looks:c[4]});
+}
+function houseShop(){
+  var L=HOUSES.map(function(h){return{l:h[0],s:fmt(h[1])+' \u00b7 upkeep '+fmt(h[2])+'/mo \u00b7 '+(G.money>=h[1]?'pay cash':'20% down + mortgage'),dis:!!G.house||G.age<22,go:function(){buyHouse(h)}}});
+  L.push({l:'Close',go:function(){$('modal').classList.remove('on')}});
+  ask('Real estate',G.house?'You already own a house. Sell it from Items first.':G.age<22?'You must be 22 to buy a house.':'A mortgage needs 20% down and bank approval.',L);
+}
+function buyHouse(h){
+  var cash=G.money>=h[1],down=Math.round(h[1]*.2);
+  if(!cash){
+    if(G.money<down)return result('You cannot afford the down payment of '+fmt(down)+'.',{});
+    if(!chance(bankP(h[1]*.4)))return result('The bank declined your mortgage application.',{happy:-3});
+  }
+  if(cash){G.money-=h[1];G.mort=0;G.mpay=0}else{G.money-=down;G.mort=h[1]-down;G.mpay=Math.round(G.mort*.0053/10)*10}
+  G.house=1;G.homeVal=h[1];G.hname=h[0];G.hup=h[2];
+  result('You bought a '+h[0].toLowerCase()+(cash?' with cash.':' with a mortgage.'),{happy:h[3]});
+}
+function auction(){
+  var lots=shuf(AUC).slice(0,3).map(function(a){var est=Math.max(100,Math.round(rnd(a[1],a[2])/50)*50);return{n:a[0],est:est,tv:Math.round(est*(.3+Math.random()*1.4)),comp:Math.round(est*(.55+Math.random()*.8)),done:0}});
+  lotList(lots);
+}
+function lotList(lots){
+  var L=lots.map(function(l){return{l:l.n+(l.done?(l.done===1?' (won)':' (lost)'):''),s:'Estimated value '+fmt(l.est),dis:!!l.done,go:function(){bidMenu(lots,l)}}});
+  L.push({l:'Leave the auction',go:function(){$('modal').classList.remove('on')}});
+  ask('Auction house','Three lots are up for bid. Estimates are only estimates: an item can be worth more or less. Cash only.',L);
+}
+function bidMenu(lots,l){
+  var L=[.6,.8,1,1.25].map(function(m){var b=Math.round(l.est*m/50)*50;return{l:'Bid '+fmt(b),s:Math.round(m*100)+'% of the estimate',dis:G.money<b,go:function(){
+    l.done=2;
+    if(b>=l.comp){l.done=1;G.money-=b;(G.inv=G.inv||[]).push({type:'auction',name:l.n,paid:b,val:l.tv});
+      result('You won the '+l.n.toLowerCase()+' for '+fmt(b)+'. The appraisal says it is worth '+fmt(l.tv)+(l.tv>b?'. A great find!':'. You overpaid.'),{happy:l.tv>b?4:-2},function(){lotList(lots)})}
+    else result('You were outbid on the '+l.n.toLowerCase()+'.',{happy:-1},function(){lotList(lots)})}}});
+  L.push({l:'Back',go:function(){lotList(lots)}});
+  ask(l.n,'Estimated value '+fmt(l.est)+'. How much do you bid?',L);
+}
+function items(){var L=(G.inv||[]).slice();if(G.house)L.push({type:'house',name:G.hname||'Your house'});return L}
+function valOf(i){return i.type==='house'?G.homeVal:i.val}
+function invPage(){
+  if(!G.alive||busy())return;
+  var it=items();
+  var L=it.map(function(i){return{l:i.name,s:i.type==='house'?'House \u00b7 value '+fmt(G.homeVal)+' \u00b7 mortgage '+fmt(G.mort):(i.type==='car'?'Car':'Auction find')+' \u00b7 worth about '+fmt(i.val)+' \u00b7 paid '+fmt(i.paid),go:function(){itemMenu(i)}}});
+  L.push({l:'Close',go:function(){$('modal').classList.remove('on')}});
+  ask('Items',it.length?'Everything you own. Tap an item to look for a buyer.':'You do not own anything yet. Visit the car dealership, real estate, or the auction house from Activities.',L);
+}
+function itemMenu(i){
+  ask(i.name,'Estimated value: '+fmt(valOf(i)),[
+    {l:'Look for a buyer',s:'Uses 1 activity. Offers vary.',dis:!(G.ap>0),go:function(){G.ap--;buyer(i)}},
+    {l:'Back',go:function(){$('modal').classList.remove('on');invPage()}}]);
+}
+function buyer(i){
+  var off=Math.round(valOf(i)*(.72+Math.random()*.5)/10)*10;
+  ask('A buyer shows up','A buyer offers '+fmt(off)+' for your '+i.name.toLowerCase()+' (estimated '+fmt(valOf(i))+').',[
+    {l:'Sell for '+fmt(off),go:function(){sellItem(i,off)}},
+    {l:'Look for another buyer',s:'Uses 1 activity',dis:!(G.ap>0),go:function(){G.ap--;buyer(i)}},
+    {l:'Keep it',go:function(){$('modal').classList.remove('on')}}]);
+}
+function sellItem(i,off){
+  if(i.type==='house'){var e=off-G.mort;if(e>=0)G.money+=e;else spend(-e);G.house=0;G.homeVal=0;G.mort=0;G.mpay=0;G.hup=0;G.hname=''}
+  else{G.money+=off;G.inv.splice(G.inv.indexOf(i),1)}
+  result('You sold your '+i.name.toLowerCase()+' for '+fmt(off)+'.',{happy:2});
+}
+/* ---------- allowance, parents, odd jobs, bank ---------- */
+function allowAmt(a){return a<10?10:a<13?25:a<16?40:60}
+function askParents(){
+  var par=G.people.filter(function(p){return!p.dead&&(p.t==='Mother'||p.t==='Father')});
+  if(!par.length)return;
+  var kid=G.age<18,A=kid?[20,50,100]:[200,1000,5000];
+  var L=A.map(function(a){return{l:'Ask for '+fmt(a),go:function(){
+    var p=pick(par),pr=.9-a/Math.max(100,pnw()*.01)*.12+(p.b-60)/200-(G.asks||0)*.12-(G.age>=25?.3:0);
+    pr=Math.max(.05,Math.min(.95,pr));G.asks=(G.asks||0)+1;
+    if(chance(pr)){G.pnw=Math.max(0,pnw()-a);p.b=Math.max(0,p.b-(kid?1:3));result(p.n.split(' ')[0]+' gave you '+fmt(a)+'.',{money:a})}
+    else{p.b=Math.max(0,p.b-2);result(p.n.split(' ')[0]+' said no.'+(pnw()<a*60?' Money is tight for them.':''),{happy:-2})}}}});
+  L.push({l:'Never mind',go:function(){$('modal').classList.remove('on')}});
+  ask('Ask your parents','Asking too often makes them less likely to say yes.',L);
+}
+var OJ=[['Mow lawns',50,110,[3,4,5,6,7,8],{health:1},'mowed lawns around the neighborhood'],['Babysit',50,120,null,{happy:1},'babysat for a local family'],['Walk dogs',30,80,null,{health:1},'walked dogs around the block'],['Wash cars',40,100,[3,4,5,6,7,8],{},'washed cars for the neighbors'],['Shovel snow',50,100,[11,0,1],{health:-1},'shoveled driveways'],['Rake leaves',40,90,[9,10],{health:1},'raked leaves for the neighbors'],['Tutor younger kids',80,160,null,{smarts:1},'tutored younger kids'],['Do chores at home',20,40,null,{},'did chores around the house']];
+function oddJobs(){
+  var L=OJ.filter(function(j){return(!j[3]||j[3].indexOf(G.month)>-1)&&(j[0]!=='Tutor younger kids'||G.smarts>=55)}).map(function(j){return{l:j[0],s:fmt(j[1])+' to '+fmt(j[2]),go:function(){
+    var pay=rnd(j[1],j[2]),fx=Object.assign({money:pay},j[4]),t='You '+j[5]+' and earned '+fmt(pay)+'.';
+    if((j[4].health||0)!==0&&chance(.03)){fx.health=-4;t+=' You hurt your back.'}
+    if(j[0]==='Do chores at home'){var ps=G.people.filter(function(p){return!p.dead&&(p.t==='Mother'||p.t==='Father')});if(ps.length){var q=pick(ps);q.b=Math.min(100,q.b+3)}}
+    result(t,fx)}}});
+  L.push({l:'Never mind',go:function(){G.ap++;$('modal').classList.remove('on')}});
+  ask('Odd jobs','Pick a job. This uses your monthly activity.',L);
+}
+function bankCap(){return Math.max(1,(G.salary||0)*2+G.money+Math.max(0,(G.homeVal||0)-(G.mort||0)))}
+function bankP(amt){var p=.55+G.smarts/500+(G.salary>0?.1:-.2)-(G.record||0)*.12-((G.debt||0)+amt)/bankCap()*.5;return Math.max(.05,Math.min(.95,p))}
+function bankPage(){
+  var now=G.age*12+G.month,cool=(G.bankCool||0)>now,cl=G.cl||0;
+  var lim=Math.min(100000,Math.max(1000,Math.round(bankCap()*.3/500)*500));
+  var deny=function(){G.bankCool=now+6;result('The bank denied your request. You can apply again in 6 months.',{happy:-3})};
+  var L=[{l:'Apply for a credit line',s:cl?'Current limit: '+fmt(cl):'Lets you cover bills without overdraft fees',dis:cool,go:function(){
+    if(chance(bankP(lim*.5))){G.cl=Math.max(cl,lim);result('The bank approved a credit line of '+fmt(G.cl)+'.',{})}else deny()}}];
+  [1000,5000,20000,50000].forEach(function(a){L.push({l:'Request a '+fmt(a)+' loan',s:'Paid into your bank balance, adds to debt',dis:cool,go:function(){
+    if(chance(bankP(a))){G.money+=a;G.debt=(G.debt||0)+a;result('The bank approved your '+fmt(a)+' loan.',{})}else deny()}})});
+  L.push({l:'Close',go:function(){$('modal').classList.remove('on')}});
+  ask('Bank','Credit limit '+fmt(cl)+' \u00b7 Debt '+fmt(G.debt||0)+(cool?' \u00b7 Recently denied':'')+'. Spending past your balance and credit means fees and a frozen credit line.',L);
+}
+/* ---------- diet, courses and camps ---------- */
+var DIET=[['Instant noodles',60,-.5,-.3,-.2,0],['Budget groceries',200,0,0,0,0],['Fast food',300,-.4,.3,-.2,0],['Balanced home cooking',450,.25,.1,.1,0],['Athlete meal plan',800,.5,0,.3,.05],['Gourmet chef-prepared meals',1500,.2,.6,.3,0]];
+function dIdx(){return G.diet==null?1:G.diet}
+function dietPage(){
+  var L=DIET.map(function(d,i){
+    var fx=[['Health',d[2]],['Happy',d[3]],['Looks',d[4]],['Smarts',d[5]]].filter(function(e){return e[1]}).map(function(e){return e[0]+(e[1]>0?' up':' down')}).join(', ')||'No effect';
+    var dc=d[1]-200;
+    return{l:d[0]+(i===dIdx()?' (current)':''),s:(G.age>=18?(dc===0?'Baseline cost':(dc>0?'+':'-')+fmt(Math.abs(dc))+'/month')+' \u00b7 ':'Parents pay \u00b7 ')+fx,go:function(){G.diet=i;result('You switched to '+d[0].toLowerCase()+'.',{})}};
+  });
+  L.push({l:'Close',go:function(){$('modal').classList.remove('on')}});
+  ask('Diet','What you eat nudges your stats every month. Cheaper plans save money but cost you health and looks.',L);
+}
+function skillPicker(kind){
+  var cost=kind==='course'?300:1500;
+  var L=SK.map(function(s){var x=lv(s[0]);return{l:s[0],s:s[1]+' \u00b7 '+lvName(x)+' \u00b7 '+x+'/100',dis:G.money<cost,go:function(){train(s[0],s[1],kind,cost)}}});
+  L.push({l:'Back',go:function(){$('modal').classList.remove('on');skillsPage()}});
+  ask(kind==='course'?'Short course':'Training camp',(kind==='course'?'A short course costs '+fmt(cost)+' and boosts a skill a lot.':'A training camp costs '+fmt(cost)+' and boosts a skill hugely.')+(G.money<cost?' You need more money in the bank.':''),L);
+}
+function train(n,cat,kind,cost){
+  G.ap--;G.skills=G.skills||{};G.apt=G.apt||{};
+  if(!G.apt[n])G.apt[n]=.7+Math.random()*.7;
+  var x=lv(n),g=Math.round((kind==='course'?rnd(9,13):rnd(22,30))*G.apt[n]);
+  if((kind==='course'&&x>=60)||x>=80)g=Math.ceil(g/2);
+  g=Math.max(2,g);
+  G.skills[n]=Math.min(100,(G.skills[n]||0)+g);
+  var fx={money:-cost};
+  if(kind==='camp'){if(cat==='Sport'){fx.health=-3;fx.happy=3}else if(cat==='Music')fx.happy=4;else{fx.smarts=2;fx.happy=2}}else fx.smarts=1;
+  var t='You '+(kind==='course'?'took a short '+n.toLowerCase()+' course':'joined a '+n.toLowerCase()+' training camp')+' and improved by '+g+'.';
+  if(lvName(lv(n))!==lvName(x))t+=' You are now '+lvName(lv(n)).toLowerCase()+'.';
+  result(t,fx);
+}
+/* ---------- crime and risk ---------- */
+var CR=[['Shoplift',14,30,250,.25,300,0,0],['Pickpocket',14,50,400,.3,500,0,1],['Vandalism',14,0,0,.3,800,0,2],['Steal a car',16,2000,8000,.45,3000,6,24],['Burglary',16,1500,6000,.4,2000,6,18],['Online fraud',18,3000,20000,.3,5000,6,24],['Embezzle from work',18,5000,40000,.3,10000,12,36],['Rob a bank',18,40000,150000,.7,20000,48,96]];
+function crimeOutcome(c){
+  var p=Math.max(.05,Math.min(.9,c[4]-G.smarts/500-(T('Lucky')?.05:0)+(G.record?.05*Math.min(G.record,4):0))),fx={};
+  if(chance(p)){
+    var m=rnd(c[6],c[7]);if(G.age<18)m=Math.min(m,6);
+    G.record=(G.record||0)+1;fx.money=-c[5];fx.happy=-8;if(m>0)G.jail=m;
+    if(c[0]==='Embezzle from work'){G.job=null;G.salary=0;G.track=null}
+    return{t:'You were caught for '+c[0].toLowerCase()+'. You paid a fine of '+fmt(c[5])+(m>0?' and were sentenced to '+m+' months in '+(G.age<18?'juvenile detention':'prison')+'.':'.')+' You now have a criminal record.',fx:fx};
+  }
+  var r=c[2]?rnd(c[2],c[3]):0;if(r)fx.money=r;fx.happy=c[2]?3:6;
+  return{t:'You got away with it.'+(r?' You made '+fmt(r)+'.':''),fx:fx};
+}
+function crimeMenu(){
+  var L=CR.filter(function(c){return G.age>=c[1]&&(c[0]!=='Embezzle from work'||G.job)}).map(function(c){return{l:c[0],s:c[2]?'Reward '+fmt(c[2])+' to '+fmt(c[3]):'No reward, just thrills',go:function(){var o=crimeOutcome(c);result(o.t,o.fx)}}});
+  L.push({l:'Never mind',go:function(){G.ap++;$('modal').classList.remove('on')}});
+  ask('Do something illegal','High risk. Getting caught means a fine, a record, and maybe prison. A record hurts job interviews.',L);
+}
+/* ---------- skills ---------- */
+var SK=[['Basketball','Sport'],['Soccer','Sport'],['Football','Sport'],['Baseball','Sport'],['Tennis','Sport'],['Swimming','Sport'],['Boxing','Sport'],['Golf','Sport'],['Piano','Music'],['Guitar','Music'],['Violin','Music'],['Drums','Music'],['Saxophone','Music'],['Trumpet','Music'],['Cooking','Other'],['Painting','Other'],['Coding','Other']];
+function lv(n){return Math.round((G.skills&&G.skills[n])||0)}
+function lvName(x){return x<1?'Never tried':x<20?'Beginner':x<40?'Amateur':x<60?'Skilled':x<80?'Expert':'Elite'}
+function skillsPage(){
+  if(!G.alive||busy())return;
+  var u=!(G.ap>0)||G.age<5;
+  var L=SK.map(function(s){var x=lv(s[0]);return{l:s[0],s:s[1]+' · '+lvName(x)+' · '+x+'/100',dis:u,go:function(){practice(s[0],s[1])}}});
+  L.unshift({l:'Take a short course',s:'$300 \u00b7 a big boost to one skill',dis:u,go:function(){skillPicker('course')}},{l:'Join a training camp',s:'$1,500 \u00b7 a huge boost to one skill (age 10+)',dis:u||G.age<10,go:function(){skillPicker('camp')}});
+  L.push({l:'Close',go:function(){$('modal').classList.remove('on')}});
+  ask('Skills',G.age<5?'You are too young to practice yet.':!(G.ap>0)?'You are out of activities this turn. You can still view your levels.':'Tap a skill to practice it. This uses one activity ('+G.ap+' left).',L);
+}
+function practice(n,cat){
+  G.ap--;G.skills=G.skills||{};G.apt=G.apt||{};
+  if(!G.apt[n])G.apt[n]=.7+Math.random()*.7;
+  var gain=Math.max(1,Math.round(rnd(2,4)*G.apt[n]+(cat==='Sport'&&T('Athletic')?1:0)+(cat==='Other'&&T('Bookish')?1:0)));
+  var before=lv(n);G.skills[n]=Math.min(100,(G.skills[n]||0)+gain);
+  var fx=cat==='Sport'?{health:2}:cat==='Music'?{happy:2}:{smarts:1,happy:1};
+  var t='You practiced '+n.toLowerCase()+' and improved by '+gain+'.';
+  if(lvName(lv(n))!==lvName(before))t+=' You are now '+lvName(lv(n)).toLowerCase()+'.';
+  if(cat==='Sport'&&chance(.05)){fx={health:-5};t+=' You got injured.'}
+  result(t,fx);
+}
+function skillEvent(done){
+  var ok=SK.filter(function(s){return lv(s[0])>=20});
+  if(!ok.length||G.jail>0)return false;
+  var s=pick(ok),n=s[0],x=lv(n),cat=s[1];
+  var what=cat==='Sport'?'a local '+n.toLowerCase()+' tournament':cat==='Music'?'an open-mic night':'a local contest';
+  var p=Math.max(.1,Math.min(.9,.2+x/120)),prize=cat==='Sport'?100+x*20:cat==='Music'?80+x*15:60+x*10;
+  ask('Your skills','You are invited to '+what+' to show off your '+n.toLowerCase()+'.',[
+    {l:'Enter',s:'Your odds depend on your '+n.toLowerCase()+' level',go:function(){
+      if(chance(p)){G.skills[n]=Math.min(100,x+2);result('You shone at '+what+' and won '+fmt(prize)+'.'+(chance(.3)?sit(true):''),{money:prize,happy:8},done)}
+      else result('You entered '+what+' but fell short.',cat==='Sport'?{happy:-3,health:-3}:{happy:-4},done)}},
+    {l:'Decline',go:function(){result('You skipped it.',{happy:-1},done)}}]);
+  return true;
+}
+/* ---------- activities ---------- */
+function activities(){
+  if(!G.alive||busy())return;
+  if(G.jail>0)return ask('In prison','You are serving time. '+G.jail+' months left.',[{l:'Close',go:function(){$('modal').classList.remove('on')}}]);
+  var u=!(G.ap>0);
+  var o=actList();
+  if(G.age>=13&&G.age<=18)o.push({l:'Do chores or odd jobs',s:'Earn pocket money from locals',odd:1});
+  if(G.age>=18&&!G.college&&!G.retired)o.push({l:'Job hunt',s:'See 5 openings and interview',job:1});
+  var L=o.map(function(x){return{l:x.l,s:x.s,dis:u,go:function(){
+    G.ap--;
+    if(x.job)return jobHunt();if(x.odd)return oddJobs();
+    var t=x.r,fx=Object.assign({},x.fx);
+    if(T('Athletic')&&fx.health)fx.health+=2;if(T('Bookish')&&fx.smarts)fx.smarts+=2;
+    if(x.friend&&chance(T('Charming')?.55:T('Shy')?.2:.35)){var f=person('Friend',null,45);G.people.push(f);t+=' You made a new friend, '+f.n+'.'}
+    result(t,fx);
+  }}});
+  L.push({l:'Close',go:function(){$('modal').classList.remove('on')}});
+  if(G.age>=8&&G.people.some(function(p){return!p.dead&&(p.t==='Mother'||p.t==='Father')}))L.push({l:'Ask your parents for money',s:'Depends on your bond with them',go:askParents});
+  if(G.age>=18)L.push({l:'Visit the bank',s:'Credit line and loans (needs approval)',go:bankPage});
+  if(G.age>=13)L.push({l:'Choose your diet',s:'Current: '+DIET[dIdx()][0].toLowerCase(),go:dietPage});
+  if(G.age>=16)L.push({l:'Do something illegal',s:'Risky: fines, a record, maybe prison',dis:u,go:function(){G.ap--;crimeMenu()}});
+  if(!G.adx)L.push({l:'Watch an ad for 2 extra activities',s:'Once per turn',go:function(){AdBridge.showRewarded(function(ok){if(ok){G.adx=1;G.ap+=2;$('modal').classList.remove('on');render();save()}})}});
+  if(G.age>=18)L.push({l:'Investments',s:'Stocks, bonds, and crypto',go:investPage});
+  if(G.age>=18)L.push({l:'Your business',s:G.biz?G.biz.n+', level '+G.biz.lv:'Start a business ($10,000)',go:bizPage});
+  if(G.age>=8)L.push({l:'Adopt a pet',s:'Pets lift your mood',go:petPage});
+  if(G.age>=18&&!hasPartner())L.push({l:'Use a dating app',s:'Uses 1 activity',dis:!(G.ap>0),go:function(){G.ap--;dating()}});
+  if(G.age>=13)L.push({l:'Post on social media',s:(G.fol||0)+' followers \u00b7 uses 1 activity',dis:!(G.ap>0),go:function(){G.ap--;postSocial()}});
+  if(G.age>=18)L.push({l:'Travel',s:'Take a trip. Uses 1 activity.',dis:!(G.ap>0),go:travelPage});
+  if(G.age>=13)L.push({l:'Memberships',s:'Gym and wardrobe plans',go:membPage});
+  if(G.age>=11&&G.age<=18)L.push({l:'School clubs and teams',s:'Join a club or sports team',go:schoolPage});
+  L.push({l:'Achievements',s:Object.keys(ACHV).length+' of '+ACH.length+' unlocked',go:achPage});
+  if(G.age>=18)L.push({l:'Car dealership',s:'Buy a car with cash or a bank loan',go:carShop});
+  if(G.age>=18)L.push({l:'Real estate',s:'Buy a home (age 22+)',go:houseShop});
+  if(G.age>=18)L.push({l:'Visit the auction house',s:'Bid on 3 lots. Uses 1 activity.',dis:!(G.ap>0),go:function(){G.ap--;auction()}});
+  if(false)L.push({l:'Buy a car',s:'$18,000 loan, $150/month upkeep',go:function(){if(chance(bankP(18000))){G.debt+=18000;G.car=1;result('The bank approved your car loan. You bought a car.',{happy:5})}else result('The bank declined your car loan.',{happy:-2})}});
+  if(false)L.push({l:'Buy a house',s:'$250,000 with $50,000 down. Needs the cash.',dis:G.money<50000,go:function(){if(chance(bankP(100000))){G.money-=50000;G.house=1;G.homeVal=250000;G.mort=200000;result('The bank approved your mortgage. You bought a house.',{happy:8})}else result('The bank declined your mortgage application.',{happy:-3})}});
+  if(false)L.push({l:'Sell your house',s:'Equity: '+fmt(G.homeVal-G.mort),go:function(){var e=G.homeVal-G.mort;if(e>=0)G.money+=e;else spend(-e);G.house=0;G.homeVal=0;G.mort=0;result('You sold your house.',{})}});
+  if(G.job)L.push({l:'Quit your job',go:function(){G.job=null;G.salary=0;G.track=null;result('You quit your job.',{happy:3})}});
+  if(G.debt>0)L.push({l:'Watch an ad to clear $5,000 of debt',go:function(){AdBridge.showRewarded(function(ok){if(ok){G.debt=Math.max(0,G.debt-5000);say('A sponsor cleared $5,000 of your debt.');$('modal').classList.remove('on');render();save()}})}});
+  if(G.debt>0)L.push({l:'Pay down debt',s:'Choose how much to pay. Debt: '+fmt(G.debt),dis:G.money<1,go:payDebtPage});
+  ask('Activities',u?'You are out of activities this turn.':'Pick an activity. You have '+G.ap+' left before you age up.',L);
+}
+
+/* ---------- render ---------- */
+function where(){
+  if(G.jail>0)return(G.age<18?'Juvenile detention':'In prison')+' · '+G.jail+' months left';
+  if(G.college)return G.college.name+', year '+(Math.floor(G.cm/12)+1)+' · GPA '+G.gpa.toFixed(2);
+  if(G.k12)return(G.grade===0?'Kindergarten':ord(G.grade)+' grade')+' · GPA '+G.gpa.toFixed(2);
+  if(G.retired)return'Retired';
+  return G.job||(G.age<5?'Baby':G.age<18?'Child':'Unemployed');
+}
+function render(){
+  $('name').textContent=G.name;
+  $('money').innerHTML=fmt(G.money)+(G.debt>0?'<br><small class="dn">Debt '+fmt(G.debt)+'</small>':'')+(G.house?'<br><small>Home equity '+fmt(G.homeVal-G.mort)+'</small>':'');
+  $('meta').textContent='Age '+G.age+' · '+MO[G.month]+' · '+where();
+  $('stats').innerHTML=STATS.map(function(s){return'<div class="st">'+s[1]+'<div class="bar"><i style="width:'+G[s[0]]+'%;background:var('+s[2]+')"></i></div></div>'}).join('');
+  var gs=[],cur=null;
+  G.log.slice(0,250).forEach(function(l){
+    if(!cur||cur.a!==l.a||cur.m!==l.m){cur={a:l.a,m:l.m,L:[]};gs.push(cur)}
+    cur.L.unshift(l.t);
+  });
+  $('log').innerHTML=gs.map(function(g){return'<div class="yr">AGE '+g.a+' · '+MO[g.m].toUpperCase()+'</div>'+g.L.map(function(t){return'<p class="ln">'+t+'</p>'}).join('')}).join('');
+  $('nw').textContent='News'+(G.unread?' ('+G.unread+')':'');
+  $('age').disabled=!G.alive;
+}
+$('nl').onclick=function(){
+  if(busy())return;
+  if(!G||!G.alive){newLife();return}
+  ask('Start a new life?','Your current life will end and cannot be recovered.',[
+    {l:'Yes, start a new life',go:function(){AdBridge.showInterstitial();if(G.age>best){best=G.age;try{localStorage.setItem('ll_best',best)}catch(e){}}newLife()}},
+    {l:'Cancel',go:function(){$('modal').classList.remove('on')}}
+  ]);
+};
+$('age').onclick=ageUp;$('act').onclick=activities;$('set').onclick=settingsPage;$('inv').onclick=invPage;$('nw').onclick=newsPage;$('ppl').onclick=people;$('skl').onclick=skillsPage;
+if(G&&G.alive){G.debt=G.debt||0;if(G.ap==null)G.ap=3;if(G.car&&!(G.inv||[]).some(function(i){return i.type==='car'})){G.inv=G.inv||[];G.inv.push({type:'car',name:'Your car',paid:18000,val:12000,up:150})}G.car=0;if(G.house&&!G.hname){G.hname='Your house';G.hup=0}G.homeVal=G.homeVal||0;G.mort=G.mort||0;G.traits=G.traits||[];G.ed=G.ed||'none';if(G.money<0){G.debt+=-G.money;G.money=0}render()}else newLife();
+</script>
+</body>
+</html>
