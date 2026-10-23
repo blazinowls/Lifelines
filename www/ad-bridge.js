@@ -19,11 +19,13 @@
 
   // Leave a blank strip at the bottom of the game for the banner ad.
   var st = document.createElement('style');
-  st.textContent = '#app{padding-bottom:var(--ad,0px) !important}.modal{padding-bottom:var(--ad,0px) !important}';
+  st.textContent = '#app{padding-bottom:var(--ad,0px) !important}' +
+    '.modal{align-items:center !important;padding:16px 12px calc(var(--ad,0px) + 16px) !important}' +
+    '.sheet{border-radius:22px !important;max-height:calc(100vh - var(--ad,0px) - 48px) !important}';
   document.head.appendChild(st);
   function setAd(h) { document.documentElement.style.setProperty('--ad', Math.ceil(h) + 'px'); }
 
-  AdMob.addListener('bannerAdSizeChanged', function (s) { if (s && s.height) { gotSize = true; setAd(s.height + 8); } });
+  AdMob.addListener('bannerAdSizeChanged', function (s) { if (s && s.height) { gotSize = true; setAd(Math.max(s.height + 16, 64)); } });
   AdMob.addListener('bannerAdFailedToLoad', function () { setAd(0); });
 
   async function init() {
@@ -46,7 +48,7 @@
         margin: 0,
         isTesting: TESTING
       });
-      if (!gotSize) setAd(70); // fallback until the real banner size arrives
+      if (!gotSize) setAd(90); // fallback until the real banner size arrives
       preloadInterstitial();
     } catch (e) { console.warn('AdMob init failed', e); }
   }
